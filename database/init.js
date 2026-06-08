@@ -8,6 +8,19 @@ async function initializeDatabase() {
   const user = process.env.DB_USER || 'root';
   const password = process.env.DB_PASSWORD || '';
   const database = process.env.DB_NAME || 'emart_db';
+  const isServerless = Boolean(process.env.VERCEL);
+
+  const fail = (message, error) => {
+    const wrappedError = new Error(`${message}: ${error.message}`);
+    wrappedError.cause = error;
+
+    if (isServerless) {
+      throw wrappedError;
+    }
+
+    console.error(wrappedError.message);
+    process.exit(1);
+  };
 
   console.log(`[DB Init] Connecting to MySQL at ${host} to check/create database...`);
 
@@ -21,8 +34,7 @@ async function initializeDatabase() {
       multipleStatements: true
     });
   } catch (error) {
-    console.error(`[DB Init] Failed to connect to MySQL server. Please ensure MySQL is running. Error: ${error.message}`);
-    process.exit(1);
+    fail('[DB Init] Failed to connect to MySQL server. Please ensure MySQL is running', error);
   }
 
   try {
@@ -30,9 +42,9 @@ async function initializeDatabase() {
     await tempConnection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
     console.log(`[DB Init] Checked/Created database "${database}".`);
   } catch (error) {
-    console.error(`[DB Init] Error creating database: ${error.message}`);
     await tempConnection.end();
-    process.exit(1);
+    tempConnection = null;
+    fail('[DB Init] Error creating database', error);
   } finally {
     if (tempConnection) await tempConnection.end();
   }
@@ -66,9 +78,19 @@ async function initializeDatabase() {
     } else {
       console.log(`[DB Init] Database tables already exist. Skipping schema initialization.`);
     }
+
+    const [columns] = await connection.query(`
+      SELECT COLUMN_NAME
+      FROM information_schema.columns
+      WHERE table_schema = ? AND table_name = 'users' AND column_name = 'profile_image_url'
+    `, [database]);
+
+    if (columns.length === 0) {
+      await connection.query(`ALTER TABLE users ADD COLUMN profile_image_url VARCHAR(255) NULL AFTER password_hash`);
+      console.log(`[DB Init] Added users.profile_image_url column.`);
+    }
   } catch (error) {
-    console.error(`[DB Init] Error initializing database schema: ${error.message}`);
-    process.exit(1);
+    fail('[DB Init] Error initializing database schema', error);
   } finally {
     await connection.end();
   }

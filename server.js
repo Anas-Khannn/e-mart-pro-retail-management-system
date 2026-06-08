@@ -11,6 +11,14 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+let dbReadyPromise = null;
+
+function initializeAppDatabase() {
+  if (!dbReadyPromise) {
+    dbReadyPromise = dbInit();
+  }
+  return dbReadyPromise;
+}
 
 // Body Parsers
 app.use(express.json());
@@ -27,8 +35,24 @@ app.use(session({
   }
 }));
 
+if (process.env.VERCEL) {
+  app.use(async (req, res, next) => {
+    if (!req.path.startsWith('/api')) {
+      return next();
+    }
+
+    try {
+      await initializeAppDatabase();
+      next();
+    } catch (err) {
+      console.error('[DB Init Error] Critical setup failure:', err);
+      res.status(500).json({ message: 'Database initialization failed.' });
+    }
+  });
+}
+
 // Create upload directories if not exist
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = process.env.VERCEL ? path.join('/tmp', 'uploads') : path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -40,7 +64,8 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'product-' + uniqueSuffix + path.extname(file.originalname));
+    const prefix = file.fieldname === 'profile_image' ? 'profile' : 'product';
+    cb(null, `${prefix}-` + uniqueSuffix + path.extname(file.originalname));
   }
 });
 const upload = multer({ 
@@ -61,8 +86,6 @@ app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
 app.use('/uploads', express.static(uploadsDir));
-app.use('/pages', express.static(path.join(__dirname, 'pages')));
-app.use('/dashboard', express.static(path.join(__dirname, 'dashboard')));
 
 // Root route serves landing page
 app.get('/', (req, res) => {
@@ -86,16 +109,52 @@ const requireAdmin = (req, res, next) => {
   }
 };
 
+const requirePageAuth = (req, res, next) => {
+  if (req.session.user) {
+    next();
+  } else {
+    res.redirect('/pages/login.html');
+  }
+};
+
+const requireAdminPage = (req, res, next) => {
+  if (req.session.user && req.session.user.role === 'admin') {
+    next();
+  } else if (req.session.user) {
+    res.redirect('/dashboard/index.html');
+  } else {
+    res.redirect('/pages/login.html');
+  }
+};
+
+// Public auth pages
+app.get('/pages/login.html', (req, res) => res.sendFile(path.join(__dirname, 'pages', 'login.html')));
+app.get('/pages/signup.html', (req, res) => res.sendFile(path.join(__dirname, 'pages', 'signup.html')));
+app.get('/pages/forgot-password.html', (req, res) => res.sendFile(path.join(__dirname, 'pages', 'forgot-password.html')));
+
+// Protected app pages
+app.get('/dashboard/index.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
+app.get('/pages/pos.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'pos.html')));
+app.get('/pages/products.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'products.html')));
+app.get('/pages/customers.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'customers.html')));
+app.get('/pages/reports.html', requirePageAuth, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'reports.html')));
+app.get('/pages/settings.html', requireAdminPage, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'settings.html')));
+app.get('/pages/users.html', requireAdminPage, (req, res) => res.sendFile(path.join(__dirname, 'pages', 'users.html')));
+
 /* ==========================================================================
    1. AUTHENTICATION MODULE API
    ========================================================================== */
 
 // Signup API
-app.post('/api/auth/signup', async (req, res) => {
-  const { full_name, email, phone, role, password } = req.body;
+app.post('/api/auth/signup', upload.single('profile_image'), async (req, res) => {
+  const { full_name, email, phone, password, role } = req.body;
 
-  if (!full_name || !email || !password || !phone) {
+  if (!full_name || !email || !password || !phone || !role) {
     return res.status(400).json({ message: 'All fields are required.' });
+  }
+
+  if (!['admin', 'shopkeeper'].includes(role)) {
+    return res.status(400).json({ message: 'Please choose a valid account role.' });
   }
 
   try {
@@ -107,16 +166,17 @@ app.post('/api/auth/signup', async (req, res) => {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const profileImageUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     // Insert user
     await mysql.query(
-      'INSERT INTO users (full_name, email, phone, password_hash, role, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [full_name, email, phone, hashedPassword, role || 'shopkeeper', 'active']
+      'INSERT INTO users (full_name, email, phone, password_hash, role, status, profile_image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [full_name, email, phone, hashedPassword, role, 'active', profileImageUrl]
     );
 
     // Activity Log
     await mysql.query('INSERT INTO activity_logs (action, details) VALUES (?, ?)', 
-      ['User Registration', `New user registered: ${email} (${role || 'shopkeeper'})`]);
+      ['User Registration', `New ${role} registered: ${email}`]);
 
     res.status(201).json({ success: true, message: 'Account registered successfully.' });
   } catch (error) {
@@ -157,7 +217,8 @@ app.post('/api/auth/login', async (req, res) => {
       id: user.id,
       full_name: user.full_name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      profile_image_url: user.profile_image_url
     };
 
     // Log Activity
@@ -170,7 +231,8 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user.id,
         full_name: user.full_name,
-        role: user.role
+        role: user.role,
+        profile_image_url: user.profile_image_url
       }
     });
   } catch (error) {
@@ -530,16 +592,21 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
 // POS Product Quick Search
 app.get('/api/pos/products', requireAuth, async (req, res) => {
   const { query, category_id } = req.query;
-  let sql = 'SELECT id, name, sku, selling_price, quantity, image_url FROM products WHERE quantity > 0';
+  let sql = `
+    SELECT p.id, p.name, p.sku, p.category_id, c.name AS category_name, p.selling_price, p.quantity, p.image_url
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.quantity > 0
+  `;
   const params = [];
 
   if (query) {
-    sql += ' AND (name LIKE ? OR sku = ?)';
+    sql += ' AND (p.name LIKE ? OR p.sku = ?)';
     params.push(`%${query}%`, query);
   }
 
   if (category_id) {
-    sql += ' AND category_id = ?';
+    sql += ' AND p.category_id = ?';
     params.push(category_id);
   }
 
@@ -1056,7 +1123,8 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
    ========================================================================== */
 
 // Initialize Database then start server
-dbInit()
+if (require.main === module) {
+  initializeAppDatabase()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`[Server] E-Mart server running successfully at http://localhost:${PORT}`);
@@ -1066,3 +1134,6 @@ dbInit()
     console.error('[DB Init Error] Critical setup failure:', err);
     process.exit(1);
   });
+}
+
+module.exports = app;
