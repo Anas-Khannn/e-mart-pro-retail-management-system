@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM Customers - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in">
+        
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+          
+          <!-- Left: Customer List Grid -->
+          <div class="table-card" style="margin-bottom: 0;">
+            <div class="table-header">
+              <div class="table-title">
+                <h3>Customer Directory</h3>
+              </div>
+              <button class="btn btn-primary" id="openAddCustomerModal">
+                <i class="fas fa-user-plus"></i> Add Customer
+              </button>
+            </div>
+
+            <!-- Filters -->
+            <div style="padding: 16px 24px; background-color: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; gap: 12px;">
+              <div class="search-input-wrapper" style="width: 100%;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="crmSearch" class="search-input" placeholder="Search by name, phone, or email..." style="width: 100%;">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Phone Number</th>
+                    <th>Points</th>
+                    <th style="text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="crmTableBody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                      <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 8px;"></i><br>
+                      Loading customer files...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination">
+              <div class="pagination-info" id="crmPaginationInfo">Showing 0 to 0 of 0 accounts</div>
+              <div class="pagination-buttons">
+                <button class="btn btn-secondary btn-sm" id="crmPrevBtn" disabled>Previous</button>
+                <button class="btn btn-secondary btn-sm" id="crmNextBtn" disabled>Next</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Customer Profile Panel (Details dynamic area) -->
+          <div class="table-card" style="margin-bottom: 0; padding: 24px;" id="profilePanel">
+            <div style="text-align: center; color: var(--text-muted); padding: 80px 0;" id="emptyProfileState">
+              <i class="fas fa-id-badge" style="font-size: 4rem; color: var(--border-color); margin-bottom: 16px;"></i>
+              <h3>Select a customer directory card</h3>
+              <p style="font-size: 0.9rem; margin-top: 4px;">Click the magnifying glass or view icon on any buyer file to inspect loyalty points, spending analytics, and historical transactions.</p>
+            </div>
+
+            <!-- Loaded Profile UI (hidden initially) -->
+            <div id="loadedProfileData" style="display: none;">
+              <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background-color: rgba(6, 182, 212, 0.1); color: var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: bold;" id="profileInitial">
+                  C
+                </div>
+                <div>
+                  <h3 id="profileName" style="font-size: 1.35rem;">Customer Name</h3>
+                  <span class="badge badge-info" id="profilePoints">Loyalty Points: 0</span>
+                </div>
+              </div>
+
+              <!-- Profile Quick stats -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); text-align: center;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Orders Volume</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; margin-top: 4px;" id="profileOrdersCount">0</div>
+                </div>
+                <div style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); text-align: center;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total Spending</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; margin-top: 4px; color: var(--success-color);" id="profileTotalSpend">$0.00</div>
+                </div>
+              </div>
+
+              <!-- Customer Info Rows -->
+              <div style="margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                <div><i class="fas fa-envelope" style="color: var(--text-muted); margin-right: 8px; width: 16px;"></i> <span id="profileEmail">email@example.com</span></div>
+                <div><i class="fas fa-phone-alt" style="color: var(--text-muted); margin-right: 8px; width: 16px;"></i> <span id="profilePhone">555-1234</span></div>
+                <div><i class="fas fa-map-marker-alt" style="color: var(--text-muted); margin-right: 8px; width: 16px;"></i> <span id="profileAddress">Street road, NY</span></div>
+              </div>
+
+              <!-- Invoice History table -->
+              <div>
+                <h4 style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 600;">Recent Transaction Invoice Log</h4>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                  <table class="custom-table" style="font-size: 0.8rem;">
+                    <thead>
+                      <tr>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Payment</th>
+                      </tr>
+                    </thead>
+                    <tbody id="profileInvoicesTbody">
+                      <!-- Injected sales invoices list -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Customer Modal Backdrop -->
+  <div class="modal-backdrop" id="crmModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3 id="crmModalTitle">Add New Customer</h3>
+        </div>
+        <button class="modal-close" id="closeCrmModal">&times;</button>
+      </div>
+      <form id="crmForm">
+        <input type="hidden" id="crm_id">
+        <div class="modal-body">
+          
+          <div class="form-group">
+            <label class="form-label" for="crm_name">Customer Full Name *</label>
+            <input type="text" id="crm_name" class="form-control" placeholder="Jane Doe" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="crm_phone">Phone Number *</label>
+            <input type="tel" id="crm_phone" class="form-control" placeholder="5551234567" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="crm_email">Email Address</label>
+            <input type="email" id="crm_email" class="form-control" placeholder="jane@example.com">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="crm_address">Mailing Address</label>
+            <textarea id="crm_address" class="form-control" rows="3" placeholder="Apartment, Street, City, ZIP code" style="resize: none; font-family: inherit;"></textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCrmModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    // State
+    let crmPage = 1;
+    const crmLimit = 8;
+    let crmTotal = 0;
+
+    // DOM
+    const crmSearch = document.getElementById('crmSearch');
+    const crmTableBody = document.getElementById('crmTableBody');
+    const crmPaginationInfo = document.getElementById('crmPaginationInfo');
+    const crmPrevBtn = document.getElementById('crmPrevBtn');
+    const crmNextBtn = document.getElementById('crmNextBtn');
+
+    const crmModal = document.getElementById('crmModal');
+    const crmForm = document.getElementById('crmForm');
+    const crmModalTitle = document.getElementById('crmModalTitle');
+    const closeCrmModalBtn = document.getElementById('closeCrmModal');
+    const cancelCrmModalBtn = document.getElementById('cancelCrmModal');
+    const openAddCustomerModal = document.getElementById('openAddCustomerModal');
+
+    const crmId = document.getElementById('crm_id');
+    const crmName = document.getElementById('crm_name');
+    const crmPhone = document.getElementById('crm_phone');
+    const crmEmail = document.getElementById('crm_email');
+    const crmAddress = document.getElementById('crm_address');
+
+    // Profile DOM
+    const emptyProfileState = document.getElementById('emptyProfileState');
+    const loadedProfileData = document.getElementById('loadedProfileData');
+    const profileInitial = document.getElementById('profileInitial');
+    const profileName = document.getElementById('profileName');
+    const profilePoints = document.getElementById('profilePoints');
+    const profileOrdersCount = document.getElementById('profileOrdersCount');
+    const profileTotalSpend = document.getElementById('profileTotalSpend');
+    const profileEmail = document.getElementById('profileEmail');
+    const profilePhone = document.getElementById('profilePhone');
+    const profileAddress = document.getElementById('profileAddress');
+    const profileInvoicesTbody = document.getElementById('profileInvoicesTbody');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load customer list
+      loadCRM();
+
+      // Filter search
+      crmSearch.addEventListener('input', () => { crmPage = 1; loadCRM(); });
+
+      // Pagination
+      crmPrevBtn.addEventListener('click', () => { if (crmPage > 1) { crmPage--; loadCRM(); } });
+      crmNextBtn.addEventListener('click', () => { if (crmPage * crmLimit < crmTotal) { crmPage++; loadCRM(); } });
+
+      // Modal triggers
+      openAddCustomerModal.addEventListener('click', () => openCrmModal(false));
+      closeCrmModalBtn.addEventListener('click', closeCrmModal);
+      cancelCrmModalBtn.addEventListener('click', closeCrmModal);
+
+      // Submit Form (Add/Update Customer)
+      crmForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = crmId.value;
+        const payload = {
+          name: crmName.value.trim(),
+          phone: crmPhone.value.trim(),
+          email: crmEmail.value.trim(),
+          address: crmAddress.value.trim()
+        };
+
+        try {
+          if (id) {
+            await API.put(`/api/customers/${id}`, payload);
+            showToast('Customer account updated.', 'success');
+          } else {
+            await API.post('/api/customers', payload);
+            showToast('Customer registered successfully.', 'success');
+          }
+          closeCrmModal();
+          loadCRM();
+        } catch (e) {
+          console.error('Customer submit fail:', e);
+        }
+      });
+    });
+
+    async function loadCRM() {
+      const search = crmSearch.value.trim();
+      let url = `/api/customers?page=${crmPage}&limit=${crmLimit}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+
+      try {
+        const response = await API.get(url);
+        crmTotal = response.total;
+        renderCRM(response.customers);
+        renderPagination();
+      } catch (err) {
+        crmTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger-color); padding: 40px;">Failed to load accounts directory.</td></tr>`;
+      }
+    }
+
+    function renderCRM(customers) {
+      if (customers.length === 0) {
+        crmTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">No registered customer files found.</td></tr>`;
+        return;
+      }
+
+      crmTableBody.innerHTML = customers.map(cust => `
+        <tr>
+          <td>
+            <div style="font-weight: 600;">${cust.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${cust.email || 'No Email'}</div>
+          </td>
+          <td>${cust.phone}</td>
+          <td><span class="badge badge-success">${cust.loyalty_points} Points</span></td>
+          <td style="text-align: center; white-space: nowrap;">
+            <button class="btn btn-secondary btn-sm" onclick="inspectCustomer(${cust.id})" style="padding: 6px; margin-right: 4px;" title="View Purchase Profile"><i class="fas fa-search"></i></button>
+            <button class="btn btn-secondary btn-sm" onclick="editCustomer(${cust.id})" style="padding: 6px; margin-right: 4px;" title="Edit Profile"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${cust.id})" style="padding: 6px;" title="Delete Profile" ${cust.id == 1 ? 'disabled style="opacity: 0.5;"' : ''}><i class="fas fa-trash-alt"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(crmTotal / crmLimit);
+      const start = crmTotal === 0 ? 0 : (crmPage - 1) * crmLimit + 1;
+      const end = Math.min(crmPage * crmLimit, crmTotal);
+
+      crmPaginationInfo.innerText = `Showing ${start} to ${end} of ${crmTotal} accounts`;
+      crmPrevBtn.disabled = crmPage === 1;
+      crmNextBtn.disabled = crmPage === totalPages || totalPages === 0;
+    }
+
+    // Modal Operations
+    function openCrmModal(isEdit = false) {
+      crmForm.reset();
+      crmId.value = '';
+      if (isEdit) {
+        crmModalTitle.innerText = 'Edit Customer Profile';
+      } else {
+        crmModalTitle.innerText = 'Register New Customer';
+      }
+      crmModal.classList.add('show');
+    }
+
+    function closeCrmModal() {
+      crmModal.classList.remove('show');
+    }
+
+    window.editCustomer = async (id) => {
+      openCrmModal(true);
+      try {
+        const response = await API.get(`/api/customers?limit=1000`);
+        const cust = response.customers.find(c => c.id === id);
+        if (cust) {
+          crmId.value = cust.id;
+          crmName.value = cust.name;
+          crmPhone.value = cust.phone;
+          crmEmail.value = cust.email || '';
+          crmAddress.value = cust.address || '';
+        }
+      } catch (err) {
+        console.error('Fetch customer edit error:', err);
+      }
+    };
+
+    window.deleteCustomer = async (id) => {
+      if (id == 1) return;
+      if (confirm('Delete this customer account? All points stats will be lost. Note: historic invoices are kept.')) {
+        try {
+          await API.delete(`/api/customers/${id}`);
+          showToast('Customer deleted successfully.', 'success');
+          loadCRM();
+          // Hide profile panel if selected
+          emptyProfileState.style.display = 'block';
+          loadedProfileData.style.display = 'none';
+        } catch (e) {
+          console.error('Delete customer fail:', e);
+        }
+      }
+    };
+
+    // Customer Detail Profile Inspection
+    window.inspectCustomer = async (id) => {
+      emptyProfileState.style.display = 'none';
+      loadedProfileData.style.display = 'none';
+
+      try {
+        const profile = await API.get(`/api/customers/${id}`);
+        const { customer, stats, orders } = profile;
+
+        profileInitial.innerText = customer.name.charAt(0).toUpperCase();
+        profileName.innerText = customer.name;
+        profilePoints.innerText = `Loyalty Points: ${customer.loyalty_points}`;
+        profileOrdersCount.innerText = stats.orders_count;
+        profileTotalSpend.innerText = `$${parseFloat(stats.total_spending).toFixed(2)}`;
+        profileEmail.innerText = customer.email || 'No email registered';
+        profilePhone.innerText = customer.phone;
+        profileAddress.innerText = customer.address || 'No address registered';
+
+        // Draw Invoices table
+        if (orders.length === 0) {
+          profileInvoicesTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No orders logged.</td></tr>`;
+        } else {
+          profileInvoicesTbody.innerHTML = orders.map(ord => {
+            const formattedDate = new Date(ord.sale_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return `
+              <tr>
+                <td><strong>${ord.invoice_number}</strong></td>
+                <td>${formattedDate}</td>
+                <td>$${parseFloat(ord.total_amount).toFixed(2)}</td>
+                <td><span class="badge badge-info">${ord.payment_method}</span></td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        loadedProfileData.style.display = 'block';
+      } catch (err) {
+        showToast('Error loading customer profile detail.', 'danger');
+        emptyProfileState.style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>

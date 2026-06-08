@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in">
+        
+        <div style="max-width: 800px; margin: 0 auto;">
+          <div class="table-card">
+            <div class="table-header">
+              <div class="table-title">
+                <h3>Store Configurations</h3>
+              </div>
+            </div>
+
+            <form id="settingsForm" style="padding: 24px;">
+              
+              <!-- Section: General -->
+              <h4 style="font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 20px; color: var(--primary-color);">
+                <i class="fas fa-store-alt"></i> General Settings
+              </h4>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="store_name">Store Name *</label>
+                  <input type="text" id="store_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="store_logo">Store Logo (Invoice Header)</label>
+                  <input type="file" id="store_logo" class="form-control" accept="image/*" style="padding: 6px 12px;">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="store_phone">Contact Phone Number</label>
+                  <input type="tel" id="store_phone" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="store_email">Support Email Address</label>
+                  <input type="email" id="store_email" class="form-control">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="store_address">Physical Address</label>
+                <textarea id="store_address" class="form-control" rows="3" placeholder="Store street address, Suite, City, ZIP" style="resize:none; font-family:inherit;"></textarea>
+              </div>
+
+              <!-- Section: Financials -->
+              <h4 style="font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 32px; margin-bottom: 20px; color: var(--primary-color);">
+                <i class="fas fa-coins"></i> Financial & POS Settings
+              </h4>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="store_currency">Currency Symbol *</label>
+                  <select id="store_currency" class="form-control">
+                    <option value="$">USD ($)</option>
+                    <option value="€">EUR (€)</option>
+                    <option value="£">GBP (£)</option>
+                    <option value="Rs.">INR (Rs.)</option>
+                    <option value="¥">JPY (¥)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="store_tax">POS Default Tax Percentage (%) *</label>
+                  <input type="number" id="store_tax" class="form-control" step="0.01" min="0" required>
+                </div>
+              </div>
+
+              <!-- Section: Theme preferences -->
+              <h4 style="font-size: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 32px; margin-bottom: 20px; color: var(--primary-color);">
+                <i class="fas fa-palette"></i> Display Preferences
+              </h4>
+
+              <div class="form-group">
+                <label class="form-label">Theme Mode</label>
+                <div style="display: flex; gap: 16px;">
+                  <label style="display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                    <input type="radio" name="display_theme" value="light" checked style="cursor:pointer;"> Light Mode (Default)
+                  </label>
+                  <label style="display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                    <input type="radio" name="display_theme" value="dark" style="cursor:pointer;"> Dark Mode
+                  </label>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div style="border-top: 1px solid var(--border-color); padding-top: 24px; margin-top: 32px; display:flex; justify-content:flex-end; gap: 12px;">
+                <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-weight:600;">
+                  <i class="fas fa-save"></i> Save Settings
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    const settingsForm = document.getElementById('settingsForm');
+    const storeName = document.getElementById('store_name');
+    const storeLogo = document.getElementById('store_logo');
+    const storePhone = document.getElementById('store_phone');
+    const storeEmail = document.getElementById('store_email');
+    const storeAddress = document.getElementById('store_address');
+    const storeCurrency = document.getElementById('store_currency');
+    const storeTax = document.getElementById('store_tax');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load current settings
+      try {
+        const settings = await API.get('/api/settings');
+        
+        storeName.value = settings.store_name || '';
+        storePhone.value = settings.phone || '';
+        storeEmail.value = settings.email || '';
+        storeAddress.value = settings.address || '';
+        storeCurrency.value = settings.currency || '$';
+        storeTax.value = settings.tax_percentage || 0;
+
+        // Toggles display checked
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        document.querySelector(`input[name="display_theme"][value="${currentTheme}"]`).checked = true;
+
+      } catch (err) {
+        console.error('Failed to load store settings:', err);
+      }
+
+      // Handle Submit Settings Form
+      settingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append('store_name', storeName.value.trim());
+        formData.append('phone', storePhone.value.trim());
+        formData.append('email', storeEmail.value.trim());
+        formData.append('address', storeAddress.value.trim());
+        formData.append('currency', storeCurrency.value);
+        formData.append('tax_percentage', storeTax.value);
+
+        if (storeLogo.files.length > 0) {
+          formData.append('logo', storeLogo.files[0]);
+        }
+
+        try {
+          await API.upload('/api/settings', formData);
+          showToast('Store settings updated successfully.', 'success');
+
+          // Apply theme choice immediately
+          const selectedTheme = document.querySelector('input[name="display_theme"]:checked').value;
+          localStorage.setItem('theme', selectedTheme);
+          if (selectedTheme === 'dark') {
+            document.body.classList.add('dark-theme');
+          } else {
+            document.body.classList.remove('dark-theme');
+          }
+
+          // Force reload navbar headers to sync immediately
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+
+        } catch (error) {
+          console.error('Settings update fail:', error);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

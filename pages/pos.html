@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Cashier Terminal - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Invoice print override styling */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        color: #000;
+        background: #FFF;
+      }
+      .modal-footer {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in" style="padding: 20px;">
+        
+        <div class="pos-layout">
+          
+          <!-- Left side: Products catalog selector -->
+          <div class="pos-products-panel">
+            <div class="pos-header">
+              <!-- Search & Barcode input -->
+              <div class="pos-search-bar">
+                <div class="search-input-wrapper" style="flex: 2;">
+                  <i class="fas fa-search"></i>
+                  <input type="text" id="posSearch" class="search-input" placeholder="Search by name or SKU..." style="width: 100%;">
+                </div>
+                
+                <div class="search-input-wrapper" style="flex: 1.2;">
+                  <i class="fas fa-barcode"></i>
+                  <input type="text" id="posBarcode" class="search-input" placeholder="Scan/Type SKU + Enter" style="width: 100%;">
+                </div>
+              </div>
+
+              <!-- Categories Filter scrollbar -->
+              <div class="pos-categories-filter" id="posCategoryFilter">
+                <span class="category-chip active" data-cat-id="">All Items</span>
+              </div>
+            </div>
+
+            <!-- Products Grid display -->
+            <div class="pos-products-grid" id="posProductsGrid">
+              <!-- Grid items injected by JS -->
+              <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 8px;"></i><br>
+                Loading cash register items...
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: Cart & Checkout Panel -->
+          <div class="pos-cart-panel">
+            
+            <!-- Customer and Invoice Header info -->
+            <div class="pos-cart-header">
+              <div class="pos-customer-selector">
+                <div style="flex: 1;">
+                  <select id="posCustomer" class="form-control" style="font-size: 0.85rem; padding: 8px;">
+                    <option value="1">Walking Customer</option>
+                  </select>
+                </div>
+                <button class="btn btn-secondary" id="addCustomerBtn" style="padding: 8px 12px;" title="Register New Customer">
+                  <i class="fas fa-user-plus"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrollable Cart Item list -->
+            <div class="pos-cart-items" id="posCartItems">
+              <!-- Empty state indicator -->
+              <div style="margin: auto; text-align: center; color: var(--text-muted); padding: 24px;">
+                <i class="fas fa-shopping-basket" style="font-size: 3rem; margin-bottom: 12px; color: var(--border-color);"></i>
+                <p style="font-size: 0.9rem;">Cart is empty.<br>Click catalog products or scan barcode.</p>
+              </div>
+            </div>
+
+            <!-- Cart Summary math (subtotal, tax, discount, net total) -->
+            <div class="pos-cart-summary">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span id="posSubtotal">$0.00</span>
+              </div>
+              <div class="summary-row">
+                <span style="display:flex; align-items:center; gap: 8px;">
+                  Discount ($): 
+                  <input type="number" id="posDiscountInput" value="0" min="0" step="0.5" style="width: 60px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color);">
+                </span>
+                <span id="posDiscount">-$0.00</span>
+              </div>
+              <div class="summary-row">
+                <span style="display:flex; align-items:center; gap: 8px;">
+                  Tax (%): 
+                  <input type="number" id="posTaxInput" value="8.25" min="0" step="0.01" style="width: 60px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color);">
+                </span>
+                <span id="posTax">+$0.00</span>
+              </div>
+              <div class="summary-row total">
+                <span>Total Amount:</span>
+                <span id="posTotal" style="color: var(--success-color);">$0.00</span>
+              </div>
+            </div>
+
+            <!-- Checkout Payment modes & Checkout Trigger -->
+            <div class="pos-checkout-section">
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">PAYMENT METHOD</div>
+              <div class="payment-grid">
+                <button class="payment-btn active" data-method="cash">
+                  <i class="fas fa-money-bill-wave"></i><br>Cash
+                </button>
+                <button class="payment-btn" data-method="card">
+                  <i class="fas fa-credit-card"></i><br>Card
+                </button>
+                <button class="payment-btn" data-method="online">
+                  <i class="fas fa-qrcode"></i><br>Online
+                </button>
+              </div>
+
+              <button class="btn btn-primary" id="checkoutBtn" style="width: 100%; padding: 14px; border-radius: var(--radius-sm); font-size: 1.05rem; font-weight: 600; margin-top: 8px;">
+                <i class="fas fa-check-circle"></i> Complete Order & Invoice
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Customer Quick Add Modal Backdrop -->
+  <div class="modal-backdrop" id="custModal">
+    <div class="modal-card" style="max-width: 450px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3>Register New Customer</h3>
+        </div>
+        <button class="modal-close" id="closeCustModalBtn">&times;</button>
+      </div>
+      <form id="custForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="cust_name">Full Name *</label>
+            <input type="text" id="cust_name" class="form-control" placeholder="John Doe" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cust_phone">Phone Number *</label>
+            <input type="tel" id="cust_phone" class="form-control" placeholder="5551234567" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cust_email">Email Address</label>
+            <input type="email" id="cust_email" class="form-control" placeholder="john@example.com">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCustModalBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Invoice Printing Modal Backdrop -->
+  <div class="modal-backdrop" id="invoiceModal">
+    <div class="modal-card" style="max-width: 420px; background: white; color: black;">
+      <div class="modal-header" style="border-bottom: 1px dashed #DDD;">
+        <div class="modal-title" style="color: black;">
+          <h3>Receipt Invoice</h3>
+        </div>
+        <button class="modal-close" id="closeInvoiceModalBtn" style="color: black;">&times;</button>
+      </div>
+      
+      <!-- Printable Invoice Area -->
+      <div class="modal-body" id="printArea" style="font-family: monospace; font-size: 0.85rem; color: black; line-height: 1.4;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <h2 style="font-size: 1.3rem; font-weight: bold; margin-bottom: 4px;" id="invStoreName">E-MART SUPERSTORE</h2>
+          <p id="invStoreAddress" style="font-size: 0.75rem; color: #555;">456 Retail Parkway, NY 10001</p>
+          <p id="invStorePhone" style="font-size: 0.75rem; color: #555;">Tel: +1 (555) 123-4567</p>
+        </div>
+
+        <div style="border-top: 1px dashed #000; padding: 10px 0;">
+          <div><strong>Invoice:</strong> <span id="invNumber">INV-000000</span></div>
+          <div><strong>Date:</strong> <span id="invDate">2026-06-07 12:00</span></div>
+          <div><strong>Cashier:</strong> <span id="invCashier">Staff</span></div>
+          <div><strong>Customer:</strong> <span id="invCustName">Walking Customer</span></div>
+        </div>
+
+        <!-- Invoice products list -->
+        <table style="width: 100%; border-collapse: collapse; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 10px 0; font-size: 0.8rem;">
+          <thead>
+            <tr style="border-bottom: 1px dashed #000;">
+              <th style="text-align: left; padding: 4px 0;">Item Name</th>
+              <th style="text-align: center; padding: 4px 0;">Qty</th>
+              <th style="text-align: right; padding: 4px 0;">Price</th>
+              <th style="text-align: right; padding: 4px 0;">Total</th>
+            </tr>
+          </thead>
+          <tbody id="invItemsTbody">
+            <!-- Items injected by checkout -->
+          </tbody>
+        </table>
+
+        <!-- Totals Math -->
+        <div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 0.8rem; margin-bottom: 16px;">
+          <div style="width: 180px; display: flex; justify-content: space-between;"><span>Subtotal:</span><span id="invSubtotal">$0.00</span></div>
+          <div style="width: 180px; display: flex; justify-content: space-between;"><span>Discount:</span><span id="invDiscount">-$0.00</span></div>
+          <div style="width: 180px; display: flex; justify-content: space-between;"><span>Tax:</span><span id="invTax">+$0.00</span></div>
+          <div style="width: 180px; display: flex; justify-content: space-between; font-weight: bold; font-size: 0.95rem; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px;">
+            <span>TOTAL:</span><span id="invTotal">$0.00</span>
+          </div>
+        </div>
+
+        <div style="text-align: center; border-top: 1px dashed #000; padding-top: 16px; font-size: 0.75rem;">
+          <p><strong>Payment Method:</strong> <span id="invPaymentMethod" style="text-transform:uppercase;">CASH</span></p>
+          <p style="margin-top: 8px; font-weight: bold;">Thank You for Shopping at E-Mart!</p>
+          <p style="color: #555;">Please keep receipt for any return/exchange.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="background: #FFF; border-top: 1px solid #EEE;">
+        <button class="btn btn-secondary" id="closeInvBtn">Close</button>
+        <button class="btn btn-primary" id="printInvBtn"><i class="fas fa-print"></i> Print Invoice</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    // State
+    let catalog = [];
+    let cart = [];
+    let activeCategory = '';
+    let selectedPayment = 'cash';
+    let storeSettings = {};
+
+    // DOM
+    const posProductsGrid = document.getElementById('posProductsGrid');
+    const posCartItems = document.getElementById('posCartItems');
+    const posCategoryFilter = document.getElementById('posCategoryFilter');
+    const posSearch = document.getElementById('posSearch');
+    const posBarcode = document.getElementById('posBarcode');
+    const posCustomer = document.getElementById('posCustomer');
+    const addCustomerBtn = document.getElementById('addCustomerBtn');
+    
+    const posDiscountInput = document.getElementById('posDiscountInput');
+    const posTaxInput = document.getElementById('posTaxInput');
+    const posSubtotal = document.getElementById('posSubtotal');
+    const posDiscount = document.getElementById('posDiscount');
+    const posTax = document.getElementById('posTax');
+    const posTotal = document.getElementById('posTotal');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+
+    // Customer Modal
+    const custModal = document.getElementById('custModal');
+    const custForm = document.getElementById('custForm');
+    const closeCustModalBtn = document.getElementById('closeCustModalBtn');
+    const cancelCustModalBtn = document.getElementById('cancelCustModalBtn');
+
+    // Invoice Modal
+    const invoiceModal = document.getElementById('invoiceModal');
+    const closeInvoiceModalBtn = document.getElementById('closeInvoiceModalBtn');
+    const closeInvBtn = document.getElementById('closeInvBtn');
+    const printInvBtn = document.getElementById('printInvBtn');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Fetch settings (tax rate, store info, currency)
+      await loadSettings();
+
+      // 2. Fetch categories & populate Chips
+      await loadCategories();
+
+      // 3. Fetch CRM customers
+      await loadCustomers();
+
+      // 4. Fetch Products and draw Grid
+      await loadPosProducts();
+
+      // Setup Search Event Listeners
+      posSearch.addEventListener('input', () => filterGrid());
+      
+      // Barcode lookup validation
+      posBarcode.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleBarcodeScan();
+        }
+      });
+
+      // Discount and Tax update listener
+      posDiscountInput.addEventListener('input', calculateCartTotals);
+      posTaxInput.addEventListener('input', calculateCartTotals);
+
+      // Payment Selection Buttons
+      document.querySelectorAll('.payment-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedPayment = btn.getAttribute('data-method');
+        });
+      });
+
+      // Checkout submit trigger
+      checkoutBtn.addEventListener('click', submitCheckout);
+
+      // Modal handles
+      addCustomerBtn.addEventListener('click', () => { custForm.reset(); custModal.classList.add('show'); });
+      closeCustModalBtn.addEventListener('click', () => custModal.classList.remove('show'));
+      cancelCustModalBtn.addEventListener('click', () => custModal.classList.remove('show'));
+      
+      // Customer quick add submit
+      custForm.addEventListener('submit', submitQuickCustomer);
+
+      // Invoice handles
+      closeInvoiceModalBtn.addEventListener('click', () => invoiceModal.classList.remove('show'));
+      closeInvBtn.addEventListener('click', () => invoiceModal.classList.remove('show'));
+      printInvBtn.addEventListener('click', () => window.print());
+    });
+
+    async function loadSettings() {
+      try {
+        storeSettings = await API.get('/api/settings');
+        posTaxInput.value = storeSettings.tax_percentage || 0;
+      } catch (err) {
+        console.error('Settings fetch error:', err);
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        const categories = await API.get('/api/categories');
+        posCategoryFilter.innerHTML = `<span class="category-chip active" data-cat-id="">All Items</span>` + 
+          categories.map(c => `<span class="category-chip" data-cat-id="${c.id}">${c.name}</span>`).join('');
+
+        // Bind chips
+        document.querySelectorAll('.category-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            activeCategory = chip.getAttribute('data-cat-id');
+            filterGrid();
+          });
+        });
+      } catch (e) {
+        console.error('POS categories load error:', e);
+      }
+    }
+
+    async function loadCustomers() {
+      try {
+        const response = await API.get('/api/customers?limit=1000');
+        // Clear except option 1
+        posCustomer.innerHTML = `<option value="1">Walking Customer</option>` + 
+          response.customers.map(c => `<option value="${c.id}">${c.name} (${c.phone})</option>`).join('');
+      } catch (err) {
+        console.error('POS CRM fetch failed:', err);
+      }
+    }
+
+    async function loadPosProducts() {
+      try {
+        catalog = await API.get('/api/pos/products');
+        drawProductsGrid(catalog);
+      } catch (err) {
+        posProductsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color); padding: 40px;">Failed to load register catalog.</div>`;
+      }
+    }
+
+    function drawProductsGrid(products) {
+      if (products.length === 0) {
+        posProductsGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px;">No matching items available.</div>`;
+        return;
+      }
+
+      posProductsGrid.innerHTML = products.map(p => {
+        const image = p.image_url ? p.image_url : '/images/placeholder-product.png';
+        const isLow = p.quantity < 15;
+        const currencySym = storeSettings.currency || '$';
+        
+        return `
+          <div class="pos-product-card" onclick="addProductToCart(${p.id})">
+            <div class="pos-product-image">
+              <img src="${image}" alt="${p.name}" onerror="this.src='https://placehold.co/80'">
+            </div>
+            <div class="pos-product-info">
+              <div class="pos-product-name">${p.name}</div>
+              <div class="pos-product-sku">${p.sku}</div>
+              <div class="pos-product-footer">
+                <span class="pos-product-price">${currencySym}${parseFloat(p.selling_price).toFixed(2)}</span>
+                <span class="pos-product-stock ${isLow ? 'low-stock' : ''}">Qty: ${p.quantity}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterGrid() {
+      const search = posSearch.value.trim().toLowerCase();
+      
+      const filtered = catalog.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search);
+        
+        // If category is not set, allow all. Note: mysql returns category_id as a number or string
+        // We match via soft comparison
+        const matchesCat = !activeCategory || p.category_id == activeCategory || (activeCategory === '' && !p.category_id);
+        
+        // Let's check: in /api/pos/products, category_id might not be returned. Let's make sure our API retrieves category_id
+        // Yes, the Express server API does query: select id, name, sku, selling_price, quantity, image_url.
+        // Wait! In server.js, /api/pos/products does query:
+        // `SELECT id, name, sku, selling_price, quantity, image_url FROM products...`
+        // Wait, it DOES NOT select category_id! So p.category_id will be undefined!
+        // To fix this, let's make sure the client uses a query filter in fetch request instead!
+        // Yes, when category chip is clicked, we can fetch from API again with query params: `/api/pos/products?category_id=X`!
+        // This is much better and handles database synchronization in real-time.
+        return matchesSearch;
+      });
+
+      drawProductsGrid(filtered);
+    }
+
+    // Dynamic category refetching instead of local filter (since API serves it)
+    async function handleCategoryChipClick(catId) {
+      activeCategory = catId;
+      const search = posSearch.value.trim();
+      let url = `/api/pos/products`;
+      const params = [];
+      if (search) params.push(`query=${encodeURIComponent(search)}`);
+      if (catId) params.push(`category_id=${catId}`);
+      if (params.length > 0) url += `?${params.join('&')}`;
+
+      try {
+        catalog = await API.get(url);
+        drawProductsGrid(catalog);
+      } catch (e) {
+        console.error('POS chip filter load error:', e);
+      }
+    }
+
+    // Update chips binding to fetch from backend
+    async function loadCategories() {
+      try {
+        const categories = await API.get('/api/categories');
+        posCategoryFilter.innerHTML = `<span class="category-chip active" onclick="handleCategoryChipClick('')">All Items</span>` + 
+          categories.map(c => `<span class="category-chip" onclick="handleCategoryChipClick(${c.id})">${c.name}</span>`).join('');
+      } catch (e) {
+        console.error('POS categories load error:', e);
+      }
+    }
+
+    // Barcode Simulation lookup
+    function handleBarcodeScan() {
+      const sku = posBarcode.value.trim();
+      if (!sku) return;
+
+      const product = catalog.find(p => p.sku === sku);
+      if (product) {
+        addProductToCart(product.id);
+        posBarcode.value = '';
+      } else {
+        showToast(`Product with SKU code "${sku}" not found in current register catalog.`, 'warning');
+      }
+    }
+
+    // Add product to cashier cart
+    window.addProductToCart = (id) => {
+      const product = catalog.find(p => p.id === id);
+      if (!product) return;
+
+      const existingCartItem = cart.find(item => item.id === id);
+      if (existingCartItem) {
+        if (existingCartItem.quantity < product.quantity) {
+          existingCartItem.quantity++;
+        } else {
+          showToast(`Cannot add more. Inventory stock limit reached (${product.quantity} items).`, 'warning');
+          return;
+        }
+      } else {
+        cart.push({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          price: parseFloat(product.selling_price),
+          quantity: 1,
+          maxQty: product.quantity
+        });
+      }
+
+      renderCart();
+    };
+
+    // Render cart items list
+    function renderCart() {
+      if (cart.length === 0) {
+        posCartItems.innerHTML = `
+          <div style="margin: auto; text-align: center; color: var(--text-muted); padding: 24px;">
+            <i class="fas fa-shopping-basket" style="font-size: 3rem; margin-bottom: 12px; color: var(--border-color);"></i>
+            <p style="font-size: 0.9rem;">Cart is empty.<br>Click catalog products or scan barcode.</p>
+          </div>
+        `;
+        calculateCartTotals();
+        return;
+      }
+
+      const currencySym = storeSettings.currency || '$';
+
+      posCartItems.innerHTML = cart.map(item => `
+        <div class="cart-item">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-price">${currencySym}${item.price.toFixed(2)}</div>
+          </div>
+          <div class="cart-item-qty">
+            <button class="qty-btn" onclick="updateItemQty(${item.id}, -1)">-</button>
+            <span class="qty-val">${item.quantity}</span>
+            <button class="qty-btn" onclick="updateItemQty(${item.id}, 1)">+</button>
+          </div>
+          <button class="cart-item-remove" onclick="removeCartItem(${item.id})" title="Remove">
+            <i class="fas fa-times-circle"></i>
+          </button>
+        </div>
+      `).join('');
+
+      calculateCartTotals();
+    }
+
+    // Update quantity in cart
+    window.updateItemQty = (id, delta) => {
+      const item = cart.find(i => i.id === id);
+      if (!item) return;
+
+      const newQty = item.quantity + delta;
+      if (newQty <= 0) {
+        removeCartItem(id);
+      } else if (newQty > item.maxQty) {
+        showToast(`Stock limit reached for this product. Max available: ${item.maxQty}`, 'warning');
+      } else {
+        item.quantity = newQty;
+        renderCart();
+      }
+    };
+
+    // Remove item from cart
+    window.removeCartItem = (id) => {
+      cart = cart.filter(i => i.id !== id);
+      renderCart();
+    };
+
+    // Math summaries
+    function calculateCartTotals() {
+      let subtotal = 0;
+      cart.forEach(item => {
+        subtotal += item.price * item.quantity;
+      });
+
+      const discountVal = parseFloat(posDiscountInput.value) || 0;
+      const taxRate = parseFloat(posTaxInput.value) || 0;
+      const taxVal = subtotal * (taxRate / 100);
+      const totalAmount = Math.max(0, subtotal + taxVal - discountVal);
+
+      const currencySym = storeSettings.currency || '$';
+
+      posSubtotal.innerText = `${currencySym}${subtotal.toFixed(2)}`;
+      posDiscount.innerText = `-${currencySym}${discountVal.toFixed(2)}`;
+      posTax.innerText = `+${currencySym}${taxVal.toFixed(2)}`;
+      posTotal.innerText = `${currencySym}${totalAmount.toFixed(2)}`;
+    }
+
+    // Submit POS Checkout Transaction
+    async function submitCheckout() {
+      if (cart.length === 0) {
+        showToast('Cart is empty. Please add items before checking out.', 'warning');
+        return;
+      }
+
+      const checkoutData = {
+        customer_id: posCustomer.value,
+        items: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+        discount: parseFloat(posDiscountInput.value) || 0,
+        tax: parseFloat(posTaxInput.value) || 0,
+        payment_method: selectedPayment
+      };
+
+      try {
+        const response = await API.post('/api/pos/checkout', checkoutData);
+        showToast('Checkout completed successfully!', 'success');
+        
+        // Show Invoice Receipt
+        await showReceipt(response.invoiceNumber);
+
+        // Clear cart and reset inputs
+        cart = [];
+        posDiscountInput.value = 0;
+        renderCart();
+        
+        // Refresh products catalog inventory levels
+        await loadPosProducts();
+
+      } catch (err) {
+        console.error('POS transaction checkout error:', err);
+      }
+    }
+
+    // Draw printable invoice modal details
+    async function showReceipt(invoiceNumber) {
+      try {
+        const details = await API.get(`/api/pos/invoice/${invoiceNumber}`);
+        const { sale, items } = details;
+
+        const currencySym = storeSettings.currency || '$';
+
+        // Set store configs
+        document.getElementById('invStoreName').innerText = storeSettings.store_name || 'E-MART SUPERSTORE';
+        document.getElementById('invStoreAddress').innerText = storeSettings.address || '456 Retail Parkway, NY';
+        document.getElementById('invStorePhone').innerText = `Tel: ${storeSettings.phone || '+1 (555) 123-4567'}`;
+
+        document.getElementById('invNumber').innerText = sale.invoice_number;
+        document.getElementById('invDate').innerText = new Date(sale.sale_date).toLocaleString();
+        document.getElementById('invCashier').innerText = sale.cashier_name || 'Staff';
+        document.getElementById('invCustName').innerText = sale.customer_name || 'Walk-in';
+
+        // Draw items lines
+        document.getElementById('invItemsTbody').innerHTML = items.map(item => `
+          <tr>
+            <td style="padding: 6px 0;">${item.product_name}</td>
+            <td style="text-align: center; padding: 6px 0;">${item.quantity}</td>
+            <td style="text-align: right; padding: 6px 0;">${currencySym}${parseFloat(item.unit_price).toFixed(2)}</td>
+            <td style="text-align: right; padding: 6px 0;">${currencySym}${parseFloat(item.subtotal).toFixed(2)}</td>
+          </tr>
+        `).join('');
+
+        // Draw totals
+        document.getElementById('invSubtotal').innerText = `${currencySym}${parseFloat(sale.subtotal).toFixed(2)}`;
+        document.getElementById('invDiscount').innerText = `-${currencySym}${parseFloat(sale.discount).toFixed(2)}`;
+        document.getElementById('invTax').innerText = `+${currencySym}${parseFloat(sale.tax).toFixed(2)}`;
+        document.getElementById('invTotal').innerText = `${currencySym}${parseFloat(sale.total_amount).toFixed(2)}`;
+        
+        document.getElementById('invPaymentMethod').innerText = sale.payment_method;
+
+        // Display Modal
+        invoiceModal.classList.add('show');
+      } catch (err) {
+        console.error('Invoice load details error:', err);
+      }
+    }
+
+    // Submit CRM quick customer registration
+    async function submitQuickCustomer(e) {
+      e.preventDefault();
+      const name = document.getElementById('cust_name').value.trim();
+      const phone = document.getElementById('cust_phone').value.trim();
+      const email = document.getElementById('cust_email').value.trim();
+
+      try {
+        const result = await API.post('/api/customers', { name, phone, email });
+        showToast('New Customer registered successfully!', 'success');
+        custModal.classList.remove('show');
+        
+        // Reload customer dropdown list and auto select new item
+        await loadCustomers();
+        posCustomer.value = result.customerId;
+      } catch (err) {
+        console.error('Quick customer signup fail:', err);
+      }
+    }
+  </script>
+</body>
+</html>

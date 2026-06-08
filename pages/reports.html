@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports Dashboard - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .report-tabs {
+      display: flex;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+    .report-tab {
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all var(--transition-fast);
+    }
+    .report-tab.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+    .report-pane {
+      display: none;
+    }
+    .report-pane.active {
+      display: block;
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    .stats-card-mini {
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stats-card-mini h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .stats-card-mini .val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in">
+        
+        <!-- Reports Tabs -->
+        <div class="report-tabs">
+          <div class="report-tab active" data-target="salesPane">Sales Analytics</div>
+          <div class="report-tab" data-target="inventoryPane">Inventory Health</div>
+          <div class="report-tab" data-target="customerPane">Customer Growth</div>
+        </div>
+
+        <!-- PANE 1: Sales Analysis -->
+        <div class="report-pane active" id="salesPane">
+          
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <h3>Revenue & Orders Trend</h3>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <select id="salesReportFilter" class="select-filter" style="padding: 6px 12px; font-size: 0.8rem;">
+                    <option value="monthly">Monthly Summary</option>
+                    <option value="weekly">Weekly Summary</option>
+                    <option value="daily">Daily Summary</option>
+                    <option value="yearly">Yearly Summary</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm" id="exportSalesCsvBtn"><i class="fas fa-file-csv"></i> CSV</button>
+                  <button class="btn btn-secondary btn-sm" onclick="window.print()"><i class="fas fa-file-pdf"></i> PDF</button>
+                </div>
+              </div>
+              <div class="chart-canvas-container" style="height: 380px;">
+                <canvas id="salesAnalyticsChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Side summaries metrics -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div class="chart-card" style="flex: 1; display:flex; flex-direction:column; justify-content:center;">
+                <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 500;">SALES AGGREGATIONS</h3>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                  <div class="stats-card-mini">
+                    <div>
+                      <h4>Gross Revenue</h4>
+                      <div class="val" id="aggGrossRevenue">$0.00</div>
+                    </div>
+                    <i class="fas fa-wallet" style="color: var(--success-color); font-size: 1.5rem;"></i>
+                  </div>
+                  <div class="stats-card-mini">
+                    <div>
+                      <h4>Total Orders</h4>
+                      <div class="val" id="aggTotalOrders">0</div>
+                    </div>
+                    <i class="fas fa-shopping-basket" style="color: var(--primary-color); font-size: 1.5rem;"></i>
+                  </div>
+                  <div class="stats-card-mini">
+                    <div>
+                      <h4>Average Basket Size</h4>
+                      <div class="val" id="aggAvgBasket">$0.00</div>
+                    </div>
+                    <i class="fas fa-calculator" style="color: var(--accent-color); font-size: 1.5rem;"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANE 2: Inventory Health -->
+        <div class="report-pane" id="inventoryPane">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            
+            <!-- Low Stock Table -->
+            <div class="table-card" style="margin-bottom: 0;">
+              <div class="table-header">
+                <div class="table-title">
+                  <h3>Low Stock Threshold Alert (< 15 items)</h3>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="exportLowStockCsvBtn"><i class="fas fa-file-csv"></i> Export CSV</button>
+              </div>
+              <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th>SKU Code</th>
+                      <th>Qty Left</th>
+                      <th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lowStockTbody">
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Calculating health...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Out of Stock Table -->
+            <div class="table-card" style="margin-bottom: 0;">
+              <div class="table-header">
+                <div class="table-title">
+                  <h3>Out of Stock Alert (0 items)</h3>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="exportOutStockCsvBtn"><i class="fas fa-file-csv"></i> Export CSV</button>
+              </div>
+              <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th>SKU Code</th>
+                      <th>Qty Left</th>
+                      <th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody id="outStockTbody">
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Calculating health...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- PANE 3: Customer Growth -->
+        <div class="report-pane" id="customerPane">
+          
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+            
+            <!-- Customer Leaderboard -->
+            <div class="table-card" style="margin-bottom: 0;">
+              <div class="table-header">
+                <div class="table-title">
+                  <h3>Top 10 Spends Leaders</h3>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="exportTopCustCsvBtn"><i class="fas fa-file-csv"></i> Export CSV</button>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Phone</th>
+                      <th>Orders Count</th>
+                      <th>Total Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody id="topCustomersTbody">
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Fetching leaderboard...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Customer Growth Chart -->
+            <div class="chart-card">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <h3>Customer Acquisitions</h3>
+                </div>
+              </div>
+              <div class="chart-canvas-container" style="height: 320px;">
+                <canvas id="customerAcqChart"></canvas>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    // State
+    let reportsData = {};
+    let salesChartInstance = null;
+    let customerChartInstance = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Setup Tab Switching
+      document.querySelectorAll('.report-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.report-pane').forEach(p => p.classList.remove('active'));
+
+          tab.classList.add('active');
+          const target = tab.getAttribute('data-target');
+          document.getElementById(target).classList.add('active');
+        });
+      });
+
+      // 2. Load Reports Data from APIs
+      await fetchReportsData('monthly');
+
+      // 3. Sales report dropdown filter trigger
+      document.getElementById('salesReportFilter').addEventListener('change', (e) => {
+        fetchReportsData(e.target.value);
+      });
+
+      // 4. CSV Exporters trigger bind
+      document.getElementById('exportSalesCsvBtn').addEventListener('click', exportSalesCSV);
+      document.getElementById('exportLowStockCsvBtn').addEventListener('click', () => exportCatalogCSV('low'));
+      document.getElementById('exportOutStockCsvBtn').addEventListener('click', () => exportCatalogCSV('out'));
+      document.getElementById('exportTopCustCsvBtn').addEventListener('click', exportTopCustomersCSV);
+    });
+
+    async function fetchReportsData(salesWindowType) {
+      try {
+        const response = await API.get(`/api/reports/analytics?type=${salesWindowType}`);
+        reportsData = response;
+
+        // Draw tables
+        populateInventoryTables(response.inventory);
+        populateCustomersTable(response.customers.top);
+
+        // Calculate aggregates
+        calculateSalesSummary(response.sales);
+
+        // Draw Charts
+        renderSalesTrendChart(response.sales);
+        renderCustomerGrowthChart(response.customers.growth);
+
+      } catch (err) {
+        showToast('Error loading reports analytics.', 'danger');
+      }
+    }
+
+    function calculateSalesSummary(salesArray) {
+      let gross = 0;
+      let totalOrders = 0;
+
+      salesArray.forEach(row => {
+        gross += parseFloat(row.value) || 0;
+        totalOrders += row.sales_count || 0;
+      });
+
+      const avgBasket = totalOrders > 0 ? gross / totalOrders : 0;
+
+      document.getElementById('aggGrossRevenue').innerText = `$${gross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('aggTotalOrders').innerText = totalOrders.toLocaleString();
+      document.getElementById('aggAvgBasket').innerText = `$${avgBasket.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function populateInventoryTables(inventory) {
+      // 1. Low stock
+      const lowTbody = document.getElementById('lowStockTbody');
+      if (inventory.low.length === 0) {
+        lowTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">All items stock levels healthy.</td></tr>`;
+      } else {
+        lowTbody.innerHTML = inventory.low.map(prod => `
+          <tr>
+            <td><strong>${prod.name}</strong></td>
+            <td><code>${prod.sku}</code></td>
+            <td><span class="badge badge-warning">${prod.quantity} Left</span></td>
+            <td>$${parseFloat(prod.selling_price).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      }
+
+      // 2. Out of stock
+      const outTbody = document.getElementById('outStockTbody');
+      if (inventory.out.length === 0) {
+        outTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No out-of-stock items detected.</td></tr>`;
+      } else {
+        outTbody.innerHTML = inventory.out.map(prod => `
+          <tr>
+            <td><strong>${prod.name}</strong></td>
+            <td><code>${prod.sku}</code></td>
+            <td><span class="badge badge-danger">Out of Stock</span></td>
+            <td>$${parseFloat(prod.selling_price).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function populateCustomersTable(topCustList) {
+      const topTbody = document.getElementById('topCustomersTbody');
+      if (topCustList.length === 0) {
+        topTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No customer transactions logged yet.</td></tr>`;
+      } else {
+        topTbody.innerHTML = topCustList.map(cust => `
+          <tr>
+            <td><strong>${cust.name}</strong></td>
+            <td>${cust.phone}</td>
+            <td>${cust.order_count} times</td>
+            <td style="color: var(--success-color); font-weight: 600;">$${parseFloat(cust.total_spent).toFixed(2)}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Chart.js Area / Line Draw
+    function renderSalesTrendChart(salesArray) {
+      const labels = salesArray.map(item => item.label);
+      const values = salesArray.map(item => parseFloat(item.value));
+
+      if (salesChartInstance) salesChartInstance.destroy();
+
+      const isDark = document.body.classList.contains('dark-theme');
+      const gridColor = isDark ? '#334155' : '#E2E8F0';
+      const labelColor = isDark ? '#94A3B8' : '#64748B';
+
+      const ctx = document.getElementById('salesAnalyticsChart').getContext('2d');
+      salesChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Sales Revenue ($)',
+            data: values,
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37, 99, 235, 0.15)',
+            borderWidth: 3,
+            tension: 0.35,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: labelColor, font: { family: 'Inter' } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: labelColor, font: { family: 'Inter' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Chart.js Bar Draw
+    function renderCustomerGrowthChart(growthArray) {
+      const labels = growthArray.map(item => item.label);
+      const values = growthArray.map(item => item.value);
+
+      if (customerChartInstance) customerChartInstance.destroy();
+
+      const isDark = document.body.classList.contains('dark-theme');
+      const gridColor = isDark ? '#334155' : '#E2E8F0';
+      const labelColor = isDark ? '#94A3B8' : '#64748B';
+
+      const ctx = document.getElementById('customerAcqChart').getContext('2d');
+      customerChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Acquisitions Count',
+            data: values,
+            backgroundColor: '#06B6D4',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: labelColor, font: { family: 'Inter' } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: labelColor, font: { family: 'Inter' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Helper Exporters (CSV Generator)
+    function downloadCSV(filename, csvRows) {
+      const csvString = csvRows.map(e => e.join(",")).join("\n");
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportSalesCSV() {
+      if (!reportsData.sales || reportsData.sales.length === 0) return;
+      const headers = ["Time Period", "Revenue Tally", "Orders Quantity"];
+      const rows = reportsData.sales.map(item => [item.label, item.value, item.sales_count]);
+      downloadCSV("sales_revenue_report.csv", [headers, ...rows]);
+    }
+
+    function exportCatalogCSV(type) {
+      const items = type === 'low' ? reportsData.inventory.low : reportsData.inventory.out;
+      if (!items || items.length === 0) return;
+      const headers = ["Product Name", "SKU Identifier", "Inventory Count", "Selling Price"];
+      const rows = items.map(item => [item.name, item.sku, item.quantity, item.selling_price]);
+      downloadCSV(`inventory_${type}_stock_health.csv`, [headers, ...rows]);
+    }
+
+    function exportTopCustomersCSV() {
+      if (!reportsData.customers || !reportsData.customers.top || reportsData.customers.top.length === 0) return;
+      const headers = ["Client Name", "Contact Phone", "Orders Placed", "Total Spend ($)"];
+      const rows = reportsData.customers.top.map(item => [item.name, item.phone, item.order_count, item.total_spent]);
+      downloadCSV("top_customer_spends.csv", [headers, ...rows]);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in">
+        
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">
+              <h3>System Staff Accounts</h3>
+            </div>
+            <button class="btn btn-primary" id="openAddUserModal">
+              <i class="fas fa-user-plus"></i> Register Staff
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Staff Name</th>
+                  <th>Email Address</th>
+                  <th>Phone Number</th>
+                  <th>Role</th>
+                  <th>Account Status</th>
+                  <th>Date Registered</th>
+                  <th style="text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 8px;"></i><br>
+                    Loading system users...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- User CRUD Modal Backdrop -->
+  <div class="modal-backdrop" id="userModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <h3 id="userModalTitle">Register New User</h3>
+        </div>
+        <button class="modal-close" id="closeUserModal">&times;</button>
+      </div>
+      <form id="userForm">
+        <input type="hidden" id="user_id">
+        <div class="modal-body">
+          
+          <div class="form-group">
+            <label class="form-label" for="usr_name">Full Name *</label>
+            <input type="text" id="usr_name" class="form-control" placeholder="Jane Shopkeeper" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="usr_email">Email Address *</label>
+            <input type="email" id="usr_email" class="form-control" placeholder="jane@emart.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="usr_phone">Phone Number *</label>
+            <input type="tel" id="usr_phone" class="form-control" placeholder="+123456789" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="usr_role">System Role *</label>
+            <select id="usr_role" class="form-control" required>
+              <option value="shopkeeper">Shopkeeper (General Access)</option>
+              <option value="admin">System Admin (Full Access)</option>
+            </select>
+          </div>
+
+          <!-- Password field (Only displayed during Create) -->
+          <div class="form-group" id="pwdGroup">
+            <label class="form-label" for="usr_password">Password *</label>
+            <input type="password" id="usr_password" class="form-control" placeholder="••••••••" required>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelUserModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save User Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    const usersTableBody = document.getElementById('usersTableBody');
+    const userModal = document.getElementById('userModal');
+    const userForm = document.getElementById('userForm');
+    const userModalTitle = document.getElementById('userModalTitle');
+    
+    const userIdInput = document.getElementById('user_id');
+    const userNameInput = document.getElementById('usr_name');
+    const userEmailInput = document.getElementById('usr_email');
+    const userPhoneInput = document.getElementById('usr_phone');
+    const userRoleSelect = document.getElementById('usr_role');
+    const userPwdInput = document.getElementById('usr_password');
+    const pwdGroup = document.getElementById('pwdGroup');
+
+    const openAddUserModal = document.getElementById('openAddUserModal');
+    const closeUserModal = document.getElementById('closeUserModal');
+    const cancelUserModal = document.getElementById('cancelUserModal');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load user accounts
+      loadUsers();
+
+      // Modal Triggers
+      openAddUserModal.addEventListener('click', () => openModal(false));
+      closeUserModal.addEventListener('click', closeModal);
+      cancelUserModal.addEventListener('click', closeModal);
+
+      // Form submit handler
+      userForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const id = userIdInput.value;
+        const payload = {
+          full_name: userNameInput.value.trim(),
+          email: userEmailInput.value.trim(),
+          phone: userPhoneInput.value.trim(),
+          role: userRoleSelect.value
+        };
+
+        try {
+          if (id) {
+            // Edit
+            await API.put(`/api/users/${id}`, payload);
+            showToast('User account updated.', 'success');
+          } else {
+            // Create (requires password)
+            payload.password = userPwdInput.value;
+            await API.post('/api/users', payload);
+            showToast('Staff registered successfully.', 'success');
+          }
+          closeModal();
+          loadUsers();
+        } catch (error) {
+          console.error('Submit staff account error:', error);
+        }
+      });
+    });
+
+    async function loadUsers() {
+      try {
+        const users = await API.get('/api/users');
+        renderUsers(users);
+      } catch (err) {
+        usersTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--danger-color); padding: 40px;">Failed to load user directory.</td></tr>`;
+      }
+    }
+
+    function renderUsers(users) {
+      if (users.length === 0) {
+        usersTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">No other users found.</td></tr>`;
+        return;
+      }
+
+      usersTableBody.innerHTML = users.map(user => {
+        const date = new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        // Status Badges
+        const isActive = user.status === 'active';
+        const statusBadge = `<span class="badge ${isActive ? 'badge-success' : 'badge-danger'}" style="cursor:pointer;" onclick="toggleUserStatus(${user.id}, '${user.status}')">${user.status}</span>`;
+        
+        const roleBadge = `<span class="badge ${user.role === 'admin' ? 'badge-info' : 'badge-warning'}">${user.role}</span>`;
+
+        return `
+          <tr>
+            <td><strong>${user.full_name}</strong></td>
+            <td>${user.email}</td>
+            <td>${user.phone || 'N/A'}</td>
+            <td>${roleBadge}</td>
+            <td>${statusBadge}</td>
+            <td>${date}</td>
+            <td style="text-align: center; white-space: nowrap;">
+              <button class="btn btn-secondary btn-sm" onclick="editUser(${user.id})" style="padding: 6px; margin-right: 4px;" title="Edit Staff"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})" style="padding: 6px;" title="Delete Staff"><i class="fas fa-trash-alt"></i></button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openModal(isEdit = false) {
+      userForm.reset();
+      userIdInput.value = '';
+      
+      if (isEdit) {
+        userModalTitle.innerText = 'Edit Staff Account';
+        pwdGroup.style.display = 'none';
+        userPwdInput.removeAttribute('required');
+      } else {
+        userModalTitle.innerText = 'Register Staff';
+        pwdGroup.style.display = 'block';
+        userPwdInput.setAttribute('required', 'required');
+      }
+      
+      userModal.classList.add('show');
+    }
+
+    function closeModal() {
+      userModal.classList.remove('show');
+    }
+
+    window.editUser = async (id) => {
+      openModal(true);
+      try {
+        const users = await API.get('/api/users');
+        const user = users.find(u => u.id === id);
+        if (user) {
+          userIdInput.value = user.id;
+          userNameInput.value = user.full_name;
+          userEmailInput.value = user.email;
+          userPhoneInput.value = user.phone || '';
+          userRoleSelect.value = user.role;
+        }
+      } catch (err) {
+        console.error('Fetch edit user error:', err);
+      }
+    };
+
+    window.deleteUser = async (id) => {
+      if (confirm('Are you sure you want to delete this staff account?')) {
+        try {
+          await API.delete(`/api/users/${id}`);
+          showToast('Staff account deleted.', 'success');
+          loadUsers();
+        } catch (error) {
+          console.error('Delete user error:', error);
+        }
+      }
+    };
+
+    window.toggleUserStatus = async (id, currentStatus) => {
+      const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      if (confirm(`Change user status to ${nextStatus}?`)) {
+        try {
+          await API.patch(`/api/users/${id}/status`, { status: nextStatus });
+          showToast(`User account status modified.`, 'success');
+          loadUsers();
+        } catch (error) {
+          console.error('Toggle status error:', error);
+        }
+      }
+    };
+  </script>
+</body>
+</html>

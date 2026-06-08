@@ -1,0 +1,189 @@
+// E-Mart Management System - Navigation & Session Guard
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // If we are on public pages (index, login, signup, forgot-password), skip layout generation
+  const path = window.location.pathname;
+  const isPublicPage = path === '/' || 
+                       path.endsWith('index.html') || 
+                       path.endsWith('login.html') || 
+                       path.endsWith('signup.html') || 
+                       path.endsWith('forgot-password.html');
+
+  if (isPublicPage) {
+    // If user is already logged in on login/signup/forgot page, redirect them to dashboard
+    if (path.endsWith('login.html') || path.endsWith('signup.html') || path.endsWith('forgot-password.html')) {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          window.location.href = '/dashboard/index.html';
+        }
+      } catch (e) {
+        console.log('Not logged in, staying on auth page.');
+      }
+    }
+    return;
+  }
+
+  // Otherwise, verify session first
+  let user = null;
+  try {
+    const response = await fetch('/api/auth/me');
+    if (!response.ok) {
+      throw new Error('Not authenticated');
+    }
+    user = await response.json();
+  } catch (error) {
+    console.error('[Nav Guard] Session check failed:', error);
+    window.location.href = '/pages/login.html';
+    return;
+  }
+
+  // Session valid! Load layouts and theme
+  initTheme();
+  renderSidebar(user);
+  renderHeader(user);
+});
+
+// Initialize theme setting from localStorage or DB config
+function initTheme() {
+  const localTheme = localStorage.getItem('theme') || 'light';
+  if (localTheme === 'dark') {
+    document.body.classList.add('dark-theme');
+  }
+}
+
+// Generate the sidebar dynamically based on user role
+function renderSidebar(user) {
+  const sidebarPlaceholder = document.getElementById('sidebar-placeholder');
+  if (!sidebarPlaceholder) return;
+
+  const path = window.location.pathname;
+  
+  const menuItems = [
+    { name: 'Dashboard', path: '/dashboard/index.html', icon: 'fa-chart-pie', roles: ['admin', 'shopkeeper'] },
+    { name: 'POS Checkout', path: '/pages/pos.html', icon: 'fa-shopping-cart', roles: ['admin', 'shopkeeper'] },
+    { name: 'Products Inventory', path: '/pages/products.html', icon: 'fa-boxes', roles: ['admin', 'shopkeeper'] },
+    { name: 'CRM Customers', path: '/pages/customers.html', icon: 'fa-users', roles: ['admin', 'shopkeeper'] },
+    { name: 'Visual Reports', path: '/pages/reports.html', icon: 'fa-chart-bar', roles: ['admin', 'shopkeeper'] },
+    { name: 'Users Management', path: '/pages/users.html', icon: 'fa-user-cog', roles: ['admin'] },
+    { name: 'Store Settings', path: '/pages/settings.html', icon: 'fa-cogs', roles: ['admin'] }
+  ];
+
+  // Restrict access to admin pages for shopkeepers
+  const isAdminPage = path.endsWith('users.html') || path.endsWith('settings.html');
+  if (isAdminPage && user.role !== 'admin') {
+    alert('Access Denied: Admin privileges required.');
+    window.location.href = '/dashboard/index.html';
+    return;
+  }
+
+  const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+
+  let linksHtml = '';
+  menuItems.forEach(item => {
+    if (item.roles.includes(user.role)) {
+      const isActive = path.endsWith(item.path.split('/').pop()) ? 'active' : '';
+      linksHtml += `
+        <li>
+          <a href="${item.path}" class="sidebar-link ${isActive}">
+            <i class="fas ${item.icon}"></i>
+            <span>${item.name}</span>
+          </a>
+        </li>
+      `;
+    }
+  });
+
+  sidebarPlaceholder.className = 'sidebar';
+  sidebarPlaceholder.innerHTML = `
+    <div class="sidebar-brand">
+      <i class="fas fa-store"></i>
+      <span>E-Mart</span>
+    </div>
+    <ul class="sidebar-menu">
+      ${linksHtml}
+    </ul>
+    <div class="sidebar-footer">
+      <div class="sidebar-user-avatar">${avatarInitial}</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">${user.full_name}</div>
+        <div class="sidebar-user-role">${user.role}</div>
+      </div>
+      <a href="#" id="sidebar-logout-btn" title="Logout" style="color: var(--danger-color); font-size: 1.15rem;">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
+    </div>
+  `;
+
+  // Bind logout listener
+  document.getElementById('sidebar-logout-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (confirm('Are you sure you want to log out?')) {
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        if (response.ok) {
+          localStorage.removeItem('user');
+          window.location.href = '/pages/login.html';
+        }
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+  });
+}
+
+// Generate topbar header
+function renderHeader(user) {
+  const headerPlaceholder = document.getElementById('header-placeholder');
+  if (!headerPlaceholder) return;
+
+  const path = window.location.pathname;
+  let pageTitle = 'E-Mart Management';
+  if (path.endsWith('index.html')) pageTitle = 'Dashboard';
+  if (path.endsWith('pos.html')) pageTitle = 'POS Checkout';
+  if (path.endsWith('products.html')) pageTitle = 'Products Inventory';
+  if (path.endsWith('customers.html')) pageTitle = 'CRM Customers';
+  if (path.endsWith('reports.html')) pageTitle = 'Visual Reports';
+  if (path.endsWith('settings.html')) pageTitle = 'Store Settings';
+  if (path.endsWith('users.html')) pageTitle = 'Users Management';
+
+  headerPlaceholder.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <button class="menu-toggle" id="menu-toggle-btn">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="header-title">
+        <h2>${pageTitle}</h2>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-toggle" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+        <i class="fas fa-moon"></i>
+      </button>
+      <div class="user-profile">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
+          ${user.role === 'admin' ? 'A' : 'S'}
+        </div>
+        <span style="font-size: 0.875rem; font-weight: 500; display: inline-block;">${user.full_name.split(' ')[0]}</span>
+      </div>
+    </div>
+  `;
+
+  // Bind responsive sidebar toggle
+  document.getElementById('menu-toggle-btn').addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar-placeholder');
+    if (sidebar) sidebar.classList.toggle('show');
+  });
+
+  // Bind theme toggle
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  themeBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.toggle('dark-theme');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+  });
+
+  // Adjust current icon based on theme
+  const isDark = document.body.classList.contains('dark-theme');
+  themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+}

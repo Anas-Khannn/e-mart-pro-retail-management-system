@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Mart - Premium Retail & Inventory Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Unique Landing Styles */
+    .landing-body {
+      background-color: #0F172A;
+      color: white;
+    }
+    
+    .nav-btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+    
+    .nav-btn-outline {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    
+    .nav-btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: white;
+    }
+    
+    .nav-btn-solid {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .nav-btn-solid:hover {
+      background-color: var(--primary-hover);
+    }
+    
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s ease;
+    }
+    
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Benefits Section */
+    .benefits-section {
+      padding: 100px 60px;
+      background-color: #1E293B;
+      color: white;
+    }
+    
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    
+    @media (max-width: 768px) {
+      .benefits-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+    }
+    
+    .benefits-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    
+    .benefit-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    
+    .benefit-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: rgba(6, 182, 212, 0.1);
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 1.1rem;
+    }
+    
+    .benefit-text h4 {
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+    }
+    
+    .benefit-text p {
+      color: #94A3B8;
+      font-size: 0.95rem;
+    }
+    
+    /* Screenshots section */
+    .screenshots-section {
+      padding: 100px 60px;
+      background-color: #0F172A;
+      text-align: center;
+    }
+    
+    .screenshot-container {
+      max-width: 900px;
+      margin: 0 auto;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 4px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+    
+    .screenshot-img {
+      width: 100%;
+      display: block;
+      transition: transform var(--transition-normal);
+    }
+    
+    .screenshot-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, 0.8));
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 40px;
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+    }
+    
+    .screenshot-container:hover .screenshot-overlay {
+      opacity: 1;
+    }
+    
+    .screenshot-container:hover .screenshot-img {
+      transform: scale(1.02);
+    }
+    
+    /* Contact Section */
+    .contact-section {
+      padding: 100px 60px;
+      background-color: #1E293B;
+    }
+    
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 60px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    @media (max-width: 768px) {
+      .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+    }
+    
+    .contact-info-box h3 {
+      font-size: 2rem;
+      margin-bottom: 16px;
+    }
+    
+    .contact-info-box p {
+      color: #94A3B8;
+      margin-bottom: 32px;
+    }
+    
+    .contact-details {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .contact-item i {
+      font-size: 1.25rem;
+      color: var(--accent-color);
+      width: 24px;
+    }
+    
+    .contact-form-card {
+      background-color: #0F172A;
+      border-radius: var(--radius-md);
+      padding: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body class="landing-body">
+
+  <!-- Navigation -->
+  <nav class="landing-navbar">
+    <div class="sidebar-brand">
+      <i class="fas fa-store"></i>
+      <span>E-Mart</span>
+    </div>
+    <ul class="landing-nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#benefits">Benefits</a></li>
+      <li><a href="#screenshots">Showcase</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div style="display: flex; gap: 12px;">
+      <a href="/pages/login.html" class="nav-btn nav-btn-outline">Login</a>
+      <a href="/pages/signup.html" class="nav-btn nav-btn-solid">Sign Up</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="hero-content">
+      <div class="hero-tagline">🚀 DBMS SEMESTER PROJECT</div>
+      <h1 class="hero-title">Intelligent E-Mart Management System</h1>
+      <p class="hero-desc">Empower your grocery store or department hub. Manage products, real-time POS checkouts, inventory stock controls, CRM records, and dynamic sales analytics under one seamless, ultra-responsive dashboard.</p>
+      <div class="hero-actions">
+        <a href="/pages/login.html" class="btn btn-primary" style="padding: 12px 28px; border-radius: var(--radius-sm); font-weight: 600;">Get Started <i class="fas fa-arrow-right"></i></a>
+        <a href="#features" class="btn btn-secondary" style="padding: 12px 28px; border-radius: var(--radius-sm); font-weight: 600; background: rgba(255, 255, 255, 0.1); color: white;">Explore Features</a>
+      </div>
+    </div>
+    <div class="hero-illustration">
+      <!-- A modern visual card mockup of dashboard instead of placeholder images -->
+      <div class="floating" style="width: 85%; background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px; box-shadow: 0 30px 60px rgba(0,0,0,0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
+          <div style="display: flex; gap: 6px;">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #EF4444;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #F59E0B;"></span>
+            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #10B981;"></span>
+          </div>
+          <span style="font-size: 0.75rem; color: #64748B;">e-mart-dashboard-mock.io</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-size: 0.7rem; color: #94A3B8; margin-bottom: 4px;">TODAY REVENUE</div>
+            <div style="font-weight: 700; color: #10B981; font-size: 1.25rem;">$12,490.50</div>
+          </div>
+          <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="font-size: 0.7rem; color: #94A3B8; margin-bottom: 4px;">TOTAL SALES</div>
+            <div style="font-weight: 700; color: #06B6D4; font-size: 1.25rem;">1,489 Orders</div>
+          </div>
+        </div>
+        <div style="height: 120px; background: repeating-linear-gradient(45deg, rgba(37,99,235,0.1) 0px, rgba(37,99,235,0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+          <i class="fas fa-chart-line" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Statistics Counters -->
+  <section class="animated-stats" id="stats">
+    <div class="stat-item">
+      <h3 class="counter" data-target="99.9">0</h3>
+      <p>System Uptime %</p>
+    </div>
+    <div class="stat-item">
+      <h3 class="counter" data-target="15000">0</h3>
+      <p>Transactions Logged</p>
+    </div>
+    <div class="stat-item">
+      <h3 class="counter" data-target="800">0</h3>
+      <p>Active Products</p>
+    </div>
+    <div class="stat-item">
+      <h3 class="counter" data-target="2500">0</h3>
+      <p>Loyal Customers</p>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section" id="features">
+    <div class="section-header reveal">
+      <h2>Everything You Need To Control Your Mart</h2>
+      <p>A full suite of enterprise features simplified into a highly responsive, modern interface. Built for performance and security.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-item-card reveal">
+        <div class="feature-item-icon">
+          <i class="fas fa-cash-register"></i>
+        </div>
+        <h3>Express POS Checkout</h3>
+        <p>Instant checkout panel. Barcode search support, category filters, automatic tax/discount math, and print-ready dynamic invoice generation.</p>
+      </div>
+      <div class="feature-item-card reveal">
+        <div class="feature-item-icon">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <h3>Stock & Inventory CRUD</h3>
+        <p>Full catalog management. Manage SKU codes, supplier details, prices, and configure threshold alerts for low and out-of-stock items.</p>
+      </div>
+      <div class="feature-item-card reveal">
+        <div class="feature-item-icon">
+          <i class="fas fa-users"></i>
+        </div>
+        <h3>CRM & Loyalty System</h3>
+        <p>Build permanent buyer profiles. Log client purchases, track spending histories, and auto-tally loyalty reward points dynamically.</p>
+      </div>
+      <div class="feature-item-card reveal">
+        <div class="feature-item-icon">
+          <i class="fas fa-chart-bar"></i>
+        </div>
+        <h3>Visual Business Reports</h3>
+        <p>Interactive sales and item data visualization using Chart.js. Generate daily/monthly graphs and download reports in PDF or CSV formats.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits Section -->
+  <section class="benefits-section" id="benefits">
+    <div class="benefits-grid">
+      <div class="reveal">
+        <h2 style="font-size: 2.5rem; margin-bottom: 24px; line-height: 1.2;">Structured For Security, Designed For Speed</h2>
+        <p style="color: #94A3B8; margin-bottom: 32px; font-size: 1.05rem;">E-Mart is engineered with a clean, decoupled MVC model architecture. The Express API utilizes SQL prepared statements to protect your store database from vulnerabilities.</p>
+        <ul class="benefits-list">
+          <li class="benefit-item">
+            <div class="benefit-icon"><i class="fas fa-shield-alt"></i></div>
+            <div class="benefit-text">
+              <h4>SQL Injection Protection</h4>
+              <p>Secure database connection using parameterized queries and statement pre-compiling.</p>
+            </div>
+          </li>
+          <li class="benefit-item">
+            <div class="benefit-icon"><i class="fas fa-user-shield"></i></div>
+            <div class="benefit-text">
+              <h4>Role-Based Access Control (RBAC)</h4>
+              <p>Granular access. Shopkeepers handle transactions and inventory, Admins manage staff and general store parameters.</p>
+            </div>
+          </li>
+          <li class="benefit-item">
+            <div class="benefit-icon"><i class="fas fa-bolt"></i></div>
+            <div class="benefit-text">
+              <h4>Dynamic Inventory Triggers</h4>
+              <p>No manual updates needed. Database triggers automatically reduce product inventory levels upon successful sales checkout.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="reveal" style="display: flex; justify-content: center;">
+        <div style="background: rgba(255,255,255,0.05); padding: 40px; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.08); width: 85%;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+            <i class="fas fa-database" style="font-size: 2rem; color: var(--accent-color);"></i>
+            <h3 style="font-family: 'Outfit', sans-serif;">Schema Normalization</h3>
+          </div>
+          <div style="font-size: 0.85rem; line-height: 1.8; color: #94A3B8; font-family: monospace;">
+            <span style="color: #38BDF8;">CREATE TABLE</span> products (<br>
+            &nbsp;&nbsp;id INT AUTO_INCREMENT PRIMARY KEY,<br>
+            &nbsp;&nbsp;sku VARCHAR(50) UNIQUE,<br>
+            &nbsp;&nbsp;purchase_price DECIMAL(10,2),<br>
+            &nbsp;&nbsp;selling_price DECIMAL(10,2),<br>
+            &nbsp;&nbsp;quantity INT,<br>
+            &nbsp;&nbsp;FOREIGN KEY (category_id) REFERENCES...<br>
+            );
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots / Mockup Showcase -->
+  <section class="screenshots-section" id="screenshots">
+    <div class="section-header reveal">
+      <h2>Professional SaaS Dashboard Interface</h2>
+      <p>Clean glassmorphism dashboard aesthetics fitted with smooth dark theme switches and side-drawer responsive grids.</p>
+    </div>
+    <div class="screenshot-container reveal">
+      <!-- Instead of broken file paths, show a beautiful mockup of POS -->
+      <div style="background: var(--sidebar-bg); padding: 40px; color: white; text-align: left; font-family: 'Inter', sans-serif;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 20px; border-bottom: 1px solid var(--sidebar-hover); padding-bottom: 10px;">
+          <h4 style="font-family: 'Outfit';"><i class="fas fa-shopping-cart" style="color: var(--accent-color);"></i> POS Cashier Terminal Mockup</h4>
+          <span class="badge badge-success">Active Checkout</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+          <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
+            <div style="display:flex; gap: 10px; margin-bottom: 10px;">
+              <div style="flex:1; background: #FFF; padding: 6px; border-radius: 4px; color:#000; font-size: 0.8rem;"><i class="fa fa-barcode"></i> BAR-98302-XC</div>
+              <div style="flex:2; background: #FFF; padding: 6px; border-radius: 4px; color:#000; font-size: 0.8rem;"><i class="fa fa-search"></i> Search Category: Groceries</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 120px;">
+              <div style="background: var(--sidebar-hover); border-radius:6px; padding: 10px; font-size: 0.8rem;">
+                <strong>Basmati Rice 5kg</strong><br>
+                <span style="color:var(--accent-color); font-weight:bold;">$12.49</span>
+              </div>
+              <div style="background: var(--sidebar-hover); border-radius:6px; padding: 10px; font-size: 0.8rem;">
+                <strong>Whole Milk 1G</strong><br>
+                <span style="color:var(--accent-color); font-weight:bold;">$3.99</span>
+              </div>
+            </div>
+          </div>
+          <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="font-size:0.75rem; color:#94A3B8;">CUSTOMER: Jane Miller</div>
+              <div style="border-bottom:1px solid #334155; margin: 8px 0;"></div>
+              <div style="font-size:0.8rem; display:flex; justify-content:space-between;"><span>Items:</span><span>2</span></div>
+              <div style="font-size:0.8rem; display:flex; justify-content:space-between;"><span>Tax:</span><span>$1.36</span></div>
+            </div>
+            <div style="font-size:1.15rem; font-weight:bold; display:flex; justify-content:space-between;">
+              <span>Total:</span><span style="color:var(--success-color);">$17.84</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot-overlay">
+        <div style="color: white;">
+          <h3 style="font-size: 1.5rem; margin-bottom: 8px;">Intuitive POS Interface</h3>
+          <p style="font-size: 0.95rem; color: #CBD5E1;">Quickly search products, apply custom discounts, scan barcodes, and complete checkout instantly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Form -->
+  <section class="contact-section" id="contact">
+    <div class="contact-grid">
+      <div class="reveal">
+        <div class="contact-info-box">
+          <h3>Get In Touch</h3>
+          <p>Have inquiries about deploying the E-Mart Management System at your department store? Fill out the form or drop us an email.</p>
+          <div class="contact-details">
+            <div class="contact-item">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>456 Retail Parkway, Shopping District, NY 10001</span>
+            </div>
+            <div class="contact-item">
+              <i class="fas fa-phone-alt"></i>
+              <span>+1 (555) 123-4567</span>
+            </div>
+            <div class="contact-item">
+              <i class="fas fa-envelope"></i>
+              <span>support@emart.com</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="contact-form-card">
+          <form id="contactForm" onsubmit="event.preventDefault(); alert('Thank you for contacting E-Mart! We will get back to you shortly.'); this.reset();">
+            <div class="form-group">
+              <label class="form-label" for="contact_name">Full Name</label>
+              <input type="text" id="contact_name" class="form-control" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact_email">Email Address</label>
+              <input type="email" id="contact_email" class="form-control" placeholder="john@example.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="contact_msg">Your Message</label>
+              <textarea id="contact_msg" class="form-control" rows="4" placeholder="How can we help you?" required style="resize:none; font-family:inherit;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; border-radius: var(--radius-sm); font-weight:600;">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="landing-footer-brand">
+      <i class="fas fa-store"></i>
+      <span>E-Mart Superstore</span>
+    </div>
+    <p class="landing-footer-copy">© 2026 E-Mart Management System. Created as a Final Year DBMS Semester Project.</p>
+  </footer>
+
+  <script>
+    // Smooth Scroll Reveal Animation
+    function reveal() {
+      const reveals = document.querySelectorAll(".reveal");
+      for (let i = 0; i < reveals.length; i++) {
+        const windowHeight = window.innerHeight;
+        const elementTop = reveals[i].getBoundingClientRect().top;
+        const elementVisible = 150;
+        if (elementTop < windowHeight - elementVisible) {
+          reveals[i].classList.add("active");
+        }
+      }
+    }
+    window.addEventListener("scroll", reveal);
+    
+    // Smooth navigation clicks
+    document.querySelectorAll('.landing-nav-links a, a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+          behavior: 'smooth'
+        });
+      });
+    });
+
+    // Statistics Counter Animation
+    const statsSection = document.getElementById('stats');
+    let countersStarted = false;
+
+    function startCounters() {
+      const counters = document.querySelectorAll('.counter');
+      counters.forEach(counter => {
+        const target = parseFloat(counter.getAttribute('data-target'));
+        const isDecimal = target % 1 !== 0;
+        const speed = 150;
+        let count = 0;
+        
+        const updateCount = () => {
+          const increment = target / speed;
+          if (count < target) {
+            count += increment;
+            if (isDecimal) {
+              counter.innerText = count.toFixed(1);
+            } else {
+              counter.innerText = Math.ceil(count);
+            }
+            setTimeout(updateCount, 15);
+          } else {
+            counter.innerText = isDecimal ? target : target.toLocaleString();
+          }
+        };
+        updateCount();
+      });
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!statsSection) return;
+      const rect = statsSection.getBoundingClientRect();
+      if (rect.top < window.innerHeight && !countersStarted) {
+        startCounters();
+        countersStarted = true;
+      }
+    });
+
+    // Initial triggers on load
+    reveal();
+  </script>
+</body>
+</html>

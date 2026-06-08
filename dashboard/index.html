@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar dynamically injected by navigation.js -->
+    <div id="sidebar-placeholder"></div>
+
+    <div class="main-content">
+      <!-- Header dynamically injected by navigation.js -->
+      <header id="header-placeholder" class="top-header"></header>
+
+      <main class="page-container fade-in">
+        
+        <!-- Metrics Dashboard Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Total Revenue</h3>
+              <div class="value" id="card-revenue">$0.00</div>
+            </div>
+            <div class="metric-icon-box green">
+              <i class="fas fa-dollar-sign"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Total Orders</h3>
+              <div class="value" id="card-orders">0</div>
+            </div>
+            <div class="metric-icon-box blue">
+              <i class="fas fa-shopping-bag"></i>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Total Products</h3>
+              <div class="value" id="card-products">0</div>
+            </div>
+            <div class="metric-icon-box cyan">
+              <i class="fas fa-box"></i>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Total Customers</h3>
+              <div class="value" id="card-customers">0</div>
+            </div>
+            <div class="metric-icon-box green">
+              <i class="fas fa-user-friends"></i>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Low Stock Items</h3>
+              <div class="value" id="card-lowstock">0</div>
+            </div>
+            <div class="metric-icon-box red" id="lowstock-box">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">
+                <h3>Sales & Revenue Trends</h3>
+              </div>
+            </div>
+            <div class="chart-canvas-container">
+              <canvas id="salesTrendChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">
+                <h3>Stock by Category</h3>
+              </div>
+            </div>
+            <div class="chart-canvas-container">
+              <canvas id="categoryShareChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Tables Section -->
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+          
+          <!-- Recent Sales table -->
+          <div class="table-card" style="margin-bottom: 0;">
+            <div class="table-header">
+              <div class="table-title">
+                <h3>Recent Transactions</h3>
+              </div>
+              <a href="/pages/reports.html" class="btn btn-secondary btn-sm">View All</a>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Invoice No</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Total</th>
+                    <th>Method</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-sales-tbody">
+                  <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">Loading transactions...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Top Selling products table -->
+          <div class="table-card" style="margin-bottom: 0;">
+            <div class="table-header">
+              <div class="table-title">
+                <h3>Top Selling Products</h3>
+              </div>
+              <a href="/pages/products.html" class="btn btn-secondary btn-sm">Inventory</a>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Product Name</th>
+                    <th>SKU</th>
+                    <th>Sold Qty</th>
+                    <th>Total Rev</th>
+                  </tr>
+                </thead>
+                <tbody id="top-products-tbody">
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-muted);">Loading products leaderboard...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Fetch Dashboard statistics counters
+      try {
+        const stats = await API.get('/api/dashboard/stats');
+        
+        // Populate stats with clean format
+        document.getElementById('card-revenue').innerText = `$${parseFloat(stats.totalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('card-orders').innerText = stats.totalOrders.toLocaleString();
+        document.getElementById('card-products').innerText = stats.totalProducts.toLocaleString();
+        document.getElementById('card-customers').innerText = stats.totalCustomers.toLocaleString();
+        
+        const lowStock = stats.lowStockCount;
+        const lowStockCard = document.getElementById('card-lowstock');
+        lowStockCard.innerText = lowStock.toLocaleString();
+        if (lowStock > 0) {
+          lowStockCard.style.color = 'var(--danger-color)';
+          document.getElementById('lowstock-box').style.animation = 'pulse 2s infinite';
+        }
+      } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+      }
+
+      // Fetch lists and chart details
+      try {
+        const details = await API.get('/api/dashboard/details');
+
+        // 1. Render Recent Sales Table
+        const recentSalesTbody = document.getElementById('recent-sales-tbody');
+        if (details.recentSales.length === 0) {
+          recentSalesTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No sales recorded yet.</td></tr>`;
+        } else {
+          recentSalesTbody.innerHTML = details.recentSales.map(sale => {
+            const formattedDate = new Date(sale.sale_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return `
+              <tr>
+                <td><strong>${sale.invoice_number}</strong></td>
+                <td>${sale.customer_name || 'Walk-in'}</td>
+                <td>${formattedDate}</td>
+                <td><strong>$${parseFloat(sale.total_amount).toFixed(2)}</strong></td>
+                <td><span class="badge badge-info">${sale.payment_method}</span></td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // 2. Render Top Products Leaderboard
+        const topProductsTbody = document.getElementById('top-products-tbody');
+        if (details.topProducts.length === 0) {
+          topProductsTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No items sold yet.</td></tr>`;
+        } else {
+          topProductsTbody.innerHTML = details.topProducts.map(prod => `
+            <tr>
+              <td><strong>${prod.name}</strong></td>
+              <td>${prod.sku}</td>
+              <td>${prod.sold_qty} units</td>
+              <td style="color: var(--success-color); font-weight: 600;">$${parseFloat(prod.revenue).toFixed(2)}</td>
+            </tr>
+          `).join('');
+        }
+
+        // 3. Render Chart.js graphs
+        renderCharts(details);
+
+      } catch (err) {
+        console.error('Error loading charts details:', err);
+      }
+    });
+
+    function renderCharts(details) {
+      const isDark = document.body.classList.contains('dark-theme');
+      const textGridColor = isDark ? '#334155' : '#E2E8F0';
+      const textLabelColor = isDark ? '#94A3B8' : '#64748B';
+
+      // Chart 1: Category Stock share (Doughnut Chart)
+      const catLabels = details.categoriesInventory.map(c => c.name);
+      const catStock = details.categoriesInventory.map(c => c.stock_total || 0);
+
+      const ctxCategory = document.getElementById('categoryShareChart').getContext('2d');
+      new Chart(ctxCategory, {
+        type: 'doughnut',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catStock,
+            backgroundColor: [
+              '#2563EB', // Blue
+              '#06B6D4', // Cyan
+              '#10B981', // Emerald Green
+              '#F59E0B', // Amber Warning
+              '#8B5CF6'  // Purple
+            ],
+            borderWidth: isDark ? 2 : 1,
+            borderColor: isDark ? '#1E293B' : '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: textLabelColor,
+                font: { family: 'Inter', size: 11 }
+              }
+            }
+          }
+        }
+      });
+
+      // Chart 2: Recent Sales Trend (Line Chart)
+      // Since recent sales list might be sparse, we can fetch real analytical data or mock it for display
+      // Let's create an aggregate trend of the recent transactions in local orders
+      const trendData = [...details.recentSales].reverse();
+      const trendLabels = trendData.map(s => s.invoice_number.split('-').pop()); // Just show unique code
+      const trendValues = trendData.map(s => parseFloat(s.total_amount));
+
+      const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
+      new Chart(ctxSales, {
+        type: 'line',
+        data: {
+          labels: trendLabels.length > 0 ? trendLabels : ['No Data'],
+          datasets: [{
+            label: 'Order Total ($)',
+            data: trendValues.length > 0 ? trendValues : [0],
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37, 99, 235, 0.05)',
+            borderWidth: 3,
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: textGridColor },
+              ticks: { color: textLabelColor, font: { family: 'Inter' } }
+            },
+            y: {
+              grid: { color: textGridColor },
+              ticks: { color: textLabelColor, font: { family: 'Inter' } }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

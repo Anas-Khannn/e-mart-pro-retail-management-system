@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - E-Mart Management System</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="auth-body">
+
+  <div class="auth-container">
+    <div class="auth-card" style="padding: 30px;">
+      <div class="auth-logo" style="margin-bottom: 20px;">
+        <i class="fas fa-store"></i>
+        <span>E-Mart</span>
+      </div>
+      <div class="auth-header" style="margin-bottom: 20px;">
+        <h2>Create Account</h2>
+        <p>Register as an Admin or Shopkeeper</p>
+      </div>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label class="form-label" for="signup_name">Full Name</label>
+          <input type="text" id="signup_name" class="form-control" placeholder="John Doe" required autocomplete="name">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="signup_email">Email Address</label>
+            <input type="email" id="signup_email" class="form-control" placeholder="john@emart.com" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup_phone">Phone Number</label>
+            <input type="tel" id="signup_phone" class="form-control" placeholder="+1234567890" required autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup_role">Role Selection</label>
+          <select id="signup_role" class="form-control" style="background: rgba(15, 23, 42, 0.6); color: white;" required>
+            <option value="shopkeeper" style="color: #000;">Shopkeeper (General Operations)</option>
+            <option value="admin" style="color: #000;">System Admin (Full Access)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="signup_password">Password</label>
+            <div class="password-input-wrapper">
+              <input type="password" id="signup_password" class="form-control" placeholder="••••••••" required autocomplete="new-password">
+            </div>
+            <div class="strength-meter">
+              <div class="strength-meter-bar" id="strengthBar"></div>
+            </div>
+            <span id="strengthText" style="font-size: 0.7rem; color: #94A3B8;">Password strength</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signup_confirm">Confirm Password</label>
+            <input type="password" id="signup_confirm" class="form-control" placeholder="••••••••" required autocomplete="new-password">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; border-radius: var(--radius-sm); font-weight: 600; margin-top: 10px;">
+          Create Account
+        </button>
+      </form>
+
+      <div class="auth-footer" style="margin-top: 20px;">
+        Already have an account? <a href="/pages/login.html">Sign In</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const signupForm = document.getElementById('signupForm');
+      const nameInput = document.getElementById('signup_name');
+      const emailInput = document.getElementById('signup_email');
+      const phoneInput = document.getElementById('signup_phone');
+      const roleSelect = document.getElementById('signup_role');
+      const passwordInput = document.getElementById('signup_password');
+      const confirmInput = document.getElementById('signup_confirm');
+      const strengthBar = document.getElementById('strengthBar');
+      const strengthText = document.getElementById('strengthText');
+
+      // Live Password Strength Check
+      passwordInput.addEventListener('input', () => {
+        const password = passwordInput.value;
+        let score = 0;
+        
+        if (password.length >= 8) score++;
+        if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        let color = '#EF4444'; // Red (weak)
+        let label = 'Weak (Needs upper, lower, numbers, special characters)';
+        let width = '25%';
+
+        if (score === 2) {
+          color = '#F59E0B'; // Orange
+          label = 'Fair (Better)';
+          width = '50%';
+        } else if (score === 3) {
+          color = '#3B82F6'; // Blue
+          label = 'Good';
+          width = '75%';
+        } else if (score === 4) {
+          color = '#10B981'; // Green
+          label = 'Strong';
+          width = '100%';
+        }
+
+        if (password.length === 0) {
+          width = '0%';
+          label = 'Password strength';
+        }
+
+        strengthBar.style.width = width;
+        strengthBar.style.backgroundColor = color;
+        strengthText.innerText = label;
+        strengthText.style.color = password.length > 0 ? color : '#94A3B8';
+      });
+
+      // Submit Sign Up Form
+      signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const full_name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const role = roleSelect.value;
+        const password = passwordInput.value;
+        const confirmPassword = confirmInput.value;
+
+        // Validations
+        if (password !== confirmPassword) {
+          showToast('Passwords do not match', 'warning');
+          return;
+        }
+
+        if (password.length < 6) {
+          showToast('Password must be at least 6 characters long', 'warning');
+          return;
+        }
+
+        try {
+          await API.post('/api/auth/signup', {
+            full_name,
+            email,
+            phone,
+            role,
+            password
+          });
+
+          showToast('Account created successfully! Redirecting...', 'success');
+          
+          setTimeout(() => {
+            window.location.href = '/pages/login.html';
+          }, 1500);
+        } catch (error) {
+          // Toast is handled in API client on failure response
+          console.error('Signup error:', error);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
