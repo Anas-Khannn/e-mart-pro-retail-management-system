@@ -424,6 +424,11 @@
       const name = `${product.name || ''} ${product.sku || ''}`.toLowerCase();
       const category = `${product.category_name || ''}`.toLowerCase();
       const seedImageMissing = /^\/uploads\/(milk|rice|earbuds|charger|tshirt|pan)\.png$/i.test(product.image_url || '');
+      const localImage = ProductImageStore.get(product);
+
+      if (localImage) {
+        return `<div class="product-thumb"><img src="${localImage}" alt="${product.name}"></div>`;
+      }
 
       if (product.image_url && !seedImageMissing) {
         return `<div class="product-thumb"><img src="${product.image_url}" alt="${product.name}"></div>`;

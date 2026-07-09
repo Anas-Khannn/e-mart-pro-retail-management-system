@@ -193,6 +193,7 @@
     let currentPage = 1;
     const itemsPerPage = 8;
     let totalProducts = 0;
+    let latestProducts = [];
 
     // DOM Elements
     const searchBar = document.getElementById('searchBar');
@@ -273,14 +274,21 @@
           formData.append('product_image', prodImageFile.files[0]);
         }
 
+        let localImageDataUrl = null;
+        if (prodImageFile.files.length > 0) {
+          localImageDataUrl = await ProductImageStore.readFile(prodImageFile.files[0]);
+        }
+
         try {
           if (id) {
             // Edit mode
             await API.upload(`/api/products/${id}`, formData, 'PUT');
+            ProductImageStore.save({ id, sku: prodSkuInput.value.trim() }, localImageDataUrl);
             showToast('Product updated successfully!', 'success');
           } else {
             // Add mode
-            await API.upload('/api/products', formData);
+            const result = await API.upload('/api/products', formData);
+            ProductImageStore.save({ id: result.productId, sku: prodSkuInput.value.trim() }, localImageDataUrl);
             showToast('Product added successfully!', 'success');
           }
           closeModal();
@@ -325,6 +333,7 @@
       try {
         const response = await API.get(url);
         totalProducts = response.total;
+        latestProducts = response.products || [];
         renderProducts(response.products);
         renderPagination();
       } catch (err) {
@@ -336,6 +345,11 @@
       const name = `${product.name || ''} ${product.sku || ''}`.toLowerCase();
       const category = `${product.category_name || ''}`.toLowerCase();
       const seedImageMissing = /^\/uploads\/(milk|rice|earbuds|charger|tshirt|pan)\.png$/i.test(product.image_url || '');
+      const localImage = ProductImageStore.get(product);
+
+      if (localImage) {
+        return `<div class="product-thumb"><img src="${localImage}" alt="${product.name}"></div>`;
+      }
 
       if (product.image_url && !seedImageMissing) {
         return `<div class="product-thumb"><img src="${product.image_url}" alt="${product.name}"></div>`;
@@ -461,7 +475,9 @@
     window.deleteProduct = async (id) => {
       if (confirm('Are you sure you want to delete this product? This action is permanent.')) {
         try {
+          const product = latestProducts.find(p => p.id === id) || { id };
           await API.delete(`/api/products/${id}`);
+          ProductImageStore.remove(product);
           showToast('Product deleted successfully.', 'success');
           loadCatalog();
         } catch (err) {

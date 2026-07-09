@@ -118,6 +118,57 @@ const API = {
   }
 };
 
+// Product image cache for environments where uploaded files are not durable.
+const ProductImageStore = {
+  prefix: 'emart_product_image:',
+
+  key(id) {
+    return `${this.prefix}${id}`;
+  },
+
+  async readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  },
+
+  save(product, dataUrl) {
+    if (!dataUrl || !product) return;
+
+    const keys = [product.id, product.sku].filter(Boolean).map(value => this.key(value));
+
+    try {
+      keys.forEach(key => localStorage.setItem(key, dataUrl));
+    } catch (error) {
+      console.warn('[ProductImageStore] Could not save image locally:', error);
+      showToast('Image is too large to store locally. Try a smaller file.', 'warning');
+    }
+  },
+
+  get(product) {
+    if (!product) return null;
+    const identifiers = [product.id, product.sku].filter(Boolean);
+
+    for (const identifier of identifiers) {
+      const dataUrl = localStorage.getItem(this.key(identifier));
+      if (dataUrl) return dataUrl;
+    }
+
+    return null;
+  },
+
+  remove(product) {
+    if (!product) return;
+    [product.id, product.sku].filter(Boolean).forEach(identifier => {
+      localStorage.removeItem(this.key(identifier));
+    });
+  }
+};
+
 // Export to window
 window.API = API;
 window.showToast = showToast;
+window.ProductImageStore = ProductImageStore;
