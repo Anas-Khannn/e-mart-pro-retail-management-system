@@ -212,8 +212,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password.' });
     }
 
-    // Set Session
-    req.session.user = {
+    const sessionUser = {
       id: user.id,
       full_name: user.full_name,
       email: user.email,
@@ -221,19 +220,39 @@ app.post('/api/auth/login', async (req, res) => {
       profile_image_url: user.profile_image_url
     };
 
-    // Log Activity
-    await mysql.query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)', 
-      [user.id, 'User Login', `${user.full_name} logged in successfully.`]);
-
-    res.json({
-      success: true,
-      message: 'Login successful.',
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        role: user.role,
-        profile_image_url: user.profile_image_url
+    req.session.regenerate((sessionErr) => {
+      if (sessionErr) {
+        console.error('Session regeneration error:', sessionErr);
+        return res.status(500).json({ message: 'Could not start login session.' });
       }
+
+      req.session.user = sessionUser;
+
+      req.session.save(async (saveErr) => {
+        if (saveErr) {
+          console.error('Session save error:', saveErr);
+          return res.status(500).json({ message: 'Could not save login session.' });
+        }
+
+        try {
+          // Log Activity
+          await mysql.query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)',
+            [user.id, 'User Login', `${user.full_name} logged in successfully.`]);
+        } catch (logError) {
+          console.error('Login logging error:', logError);
+        }
+
+        res.json({
+          success: true,
+          message: 'Login successful.',
+          user: {
+            id: user.id,
+            full_name: user.full_name,
+            role: user.role,
+            profile_image_url: user.profile_image_url
+          }
+        });
+      });
     });
   } catch (error) {
     console.error('Login API error:', error);

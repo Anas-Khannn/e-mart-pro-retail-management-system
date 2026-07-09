@@ -1,7 +1,8 @@
 // E-Mart Management System - Navigation & Session Guard
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // If we are on public pages (index, login, signup, forgot-password), skip layout generation
+  // Public pages do not render the app shell. Keep them passive so a failed
+  // dashboard guard cannot bounce back into an automatic dashboard redirect.
   const path = window.location.pathname;
   const isLandingPage = path === '/' || path === '/index.html';
   const isPublicPage = isLandingPage || 
@@ -10,31 +11,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                        path.endsWith('forgot-password.html');
 
   if (isPublicPage) {
-    // If user is already logged in on login/signup/forgot page, redirect them to dashboard
-    if (path.endsWith('login.html') || path.endsWith('signup.html') || path.endsWith('forgot-password.html')) {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          window.location.href = '/dashboard/index.html';
-        }
-      } catch (e) {
-        console.log('Not logged in, staying on auth page.');
-      }
-    }
     return;
   }
 
   // Otherwise, verify session first
   let user = null;
   try {
-    const response = await fetch('/api/auth/me');
+    const response = await fetch('/api/auth/me', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json'
+      }
+    });
     if (!response.ok) {
       throw new Error('Not authenticated');
     }
     user = await response.json();
   } catch (error) {
     console.error('[Nav Guard] Session check failed:', error);
-    window.location.href = '/pages/login.html';
+    if (!path.endsWith('/pages/login.html')) {
+      window.location.replace('/pages/login.html');
+    }
     return;
   }
 
