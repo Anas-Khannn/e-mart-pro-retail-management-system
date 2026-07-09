@@ -104,10 +104,10 @@ const API = {
     }
   },
 
-  async upload(url, formData) {
+  async upload(url, formData, method = 'POST') {
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method,
         body: formData // Note: Content-Type header must NOT be set manually, browser sets it with boundary
       });
       return await this.handleResponse(response);

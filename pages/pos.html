@@ -398,14 +398,14 @@
       }
 
       posProductsGrid.innerHTML = products.map(p => {
-        const image = p.image_url ? p.image_url : '/images/placeholder-product.png';
+        const visual = getProductVisual(p);
         const isLow = p.quantity < 15;
         const currencySym = storeSettings.currency || '$';
-        
+
         return `
           <div class="pos-product-card" onclick="addProductToCart(${p.id})">
             <div class="pos-product-image">
-              <img src="${image}" alt="${p.name}" onerror="this.src='https://placehold.co/80'">
+              ${visual}
             </div>
             <div class="pos-product-info">
               <div class="pos-product-name">${p.name}</div>
@@ -418,6 +418,32 @@
           </div>
         `;
       }).join('');
+    }
+
+    function getProductVisual(product) {
+      const name = `${product.name || ''} ${product.sku || ''}`.toLowerCase();
+      const category = `${product.category_name || ''}`.toLowerCase();
+      const seedImageMissing = /^\/uploads\/(milk|rice|earbuds|charger|tshirt|pan)\.png$/i.test(product.image_url || '');
+
+      if (product.image_url && !seedImageMissing) {
+        return `<div class="product-thumb"><img src="${product.image_url}" alt="${product.name}"></div>`;
+      }
+
+      let icon = 'fa-box';
+      let theme = 'grocery';
+      if (name.includes('rice')) icon = 'fa-wheat-awn';
+      else if (name.includes('milk')) icon = 'fa-bottle-water';
+      else if (name.includes('earbud') || name.includes('headphone')) icon = 'fa-headphones';
+      else if (name.includes('charger') || name.includes('usb')) icon = 'fa-plug';
+      else if (name.includes('shirt') || category.includes('clothing')) icon = 'fa-shirt';
+      else if (name.includes('pan') || category.includes('home')) icon = 'fa-kitchen-set';
+
+      if (category.includes('electronic')) theme = 'electronics';
+      else if (category.includes('clothing')) theme = 'clothing';
+      else if (category.includes('home')) theme = 'home';
+      else if (category.includes('pharmacy')) theme = 'pharmacy';
+
+      return `<div class="product-thumb-icon ${theme}" title="${product.name}"><i class="fas ${icon}"></i></div>`;
     }
 
     function filterGrid() {

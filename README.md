@@ -103,3 +103,4 @@ Ensure your MySQL service is started (via XAMPP, MySQL Installer, or command lin
 
 *   **System Admin**: `admin@emart.com` (Full access to all panels, including settings and staff management).
 *   **Shopkeeper Staff**: `shopkeeper@emart.com` (Standard access: checkout terminal, product list, reports, customer CRM).
+# e-mart-pro-retail-management-system

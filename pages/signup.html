@@ -17,10 +17,39 @@
       </div>
       <div class="auth-header" style="margin-bottom: 20px;">
         <h2>Create Account</h2>
-        <p>Register as an Admin or Shopkeeper</p>
+        <p>Choose the account role you want to use after login.</p>
       </div>
 
       <form id="signupForm">
+        <div class="login-role-switch" role="group" aria-label="Account role">
+          <button type="button" data-role="admin">
+            <i class="fas fa-user-shield"></i>
+            Admin
+          </button>
+          <button type="button" class="active" data-role="shopkeeper">
+            <i class="fas fa-cash-register"></i>
+            Shopkeeper
+          </button>
+        </div>
+
+        <div class="role-feature-panel">
+          <div class="role-feature-title" id="roleFeatureTitle">Shopkeeper workspace includes</div>
+          <div class="role-feature-grid" id="roleFeatureGrid"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup_profile_image">Profile Picture</label>
+          <div class="profile-upload-row">
+            <div class="profile-upload-preview" id="profilePreview">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-upload-control">
+              <input type="file" id="signup_profile_image" class="form-control" accept="image/*">
+              <span>Upload a clear photo to show on your account profile.</span>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label" for="signup_name">Full Name</label>
           <input type="text" id="signup_name" class="form-control" placeholder="John Doe" required autocomplete="name">
@@ -35,14 +64,6 @@
             <label class="form-label" for="signup_phone">Phone Number</label>
             <input type="tel" id="signup_phone" class="form-control" placeholder="+1234567890" required autocomplete="tel">
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="signup_role">Role Selection</label>
-          <select id="signup_role" class="form-control" style="background: rgba(15, 23, 42, 0.6); color: white;" required>
-            <option value="shopkeeper" style="color: #000;">Shopkeeper (General Operations)</option>
-            <option value="admin" style="color: #000;">System Admin (Full Access)</option>
-          </select>
         </div>
 
         <div class="form-row">
@@ -81,11 +102,76 @@
       const nameInput = document.getElementById('signup_name');
       const emailInput = document.getElementById('signup_email');
       const phoneInput = document.getElementById('signup_phone');
-      const roleSelect = document.getElementById('signup_role');
+      const profileImageInput = document.getElementById('signup_profile_image');
+      const profilePreview = document.getElementById('profilePreview');
       const passwordInput = document.getElementById('signup_password');
       const confirmInput = document.getElementById('signup_confirm');
       const strengthBar = document.getElementById('strengthBar');
       const strengthText = document.getElementById('strengthText');
+      const roleButtons = document.querySelectorAll('.login-role-switch button');
+      const roleFeatureTitle = document.getElementById('roleFeatureTitle');
+      const roleFeatureGrid = document.getElementById('roleFeatureGrid');
+      let selectedRole = 'shopkeeper';
+
+      const roleProfiles = {
+        admin: {
+          title: 'Admin workspace includes',
+          features: [
+            ['fa-users-gear', 'Manage users and roles'],
+            ['fa-sliders', 'Store settings and branding'],
+            ['fa-chart-line', 'Full reports and analytics'],
+            ['fa-cash-register', 'All shopkeeper tools included']
+          ]
+        },
+        shopkeeper: {
+          title: 'Shopkeeper workspace includes',
+          features: [
+            ['fa-cash-register', 'POS checkout and invoices'],
+            ['fa-boxes-stacked', 'Inventory browsing'],
+            ['fa-user-tag', 'Customer records'],
+            ['fa-chart-simple', 'Sales reports access']
+          ]
+        }
+      };
+
+      function applyRole(role) {
+        selectedRole = role;
+        const profile = roleProfiles[role];
+        roleButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.role === role));
+        roleFeatureTitle.innerText = profile.title;
+        roleFeatureGrid.innerHTML = profile.features.map(feature => `
+          <div class="role-feature-item">
+            <i class="fas ${feature[0]}"></i>
+            <span>${feature[1]}</span>
+          </div>
+        `).join('');
+      }
+
+      roleButtons.forEach(btn => {
+        btn.addEventListener('click', () => applyRole(btn.dataset.role));
+      });
+      applyRole(selectedRole);
+
+      profileImageInput.addEventListener('change', () => {
+        const file = profileImageInput.files[0];
+        if (!file) {
+          profilePreview.innerHTML = '<i class="fas fa-user"></i>';
+          return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+          showToast('Please choose a valid image file.', 'warning');
+          profileImageInput.value = '';
+          profilePreview.innerHTML = '<i class="fas fa-user"></i>';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          profilePreview.innerHTML = `<img src="${reader.result}" alt="Profile preview">`;
+        };
+        reader.readAsDataURL(file);
+      });
 
       // Live Password Strength Check
       passwordInput.addEventListener('input', () => {
@@ -133,7 +219,6 @@
         const full_name = nameInput.value.trim();
         const email = emailInput.value.trim();
         const phone = phoneInput.value.trim();
-        const role = roleSelect.value;
         const password = passwordInput.value;
         const confirmPassword = confirmInput.value;
 
@@ -149,13 +234,17 @@
         }
 
         try {
-          await API.post('/api/auth/signup', {
-            full_name,
-            email,
-            phone,
-            role,
-            password
-          });
+          const formData = new FormData();
+          formData.append('full_name', full_name);
+          formData.append('email', email);
+          formData.append('phone', phone);
+          formData.append('password', password);
+          formData.append('role', selectedRole);
+          if (profileImageInput.files[0]) {
+            formData.append('profile_image', profileImageInput.files[0]);
+          }
+
+          await API.upload('/api/auth/signup', formData);
 
           showToast('Account created successfully! Redirecting...', 'success');
           

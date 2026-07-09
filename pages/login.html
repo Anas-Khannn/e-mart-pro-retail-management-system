@@ -17,10 +17,35 @@
       </div>
       <div class="auth-header">
         <h2>Welcome Back</h2>
-        <p>Access your E-Mart portal dashboard</p>
+        <p>Choose how you want to enter the E-Mart dashboard.</p>
       </div>
 
       <form id="loginForm">
+        <div class="login-choice-grid" aria-label="Login role">
+          <button type="button" class="login-choice-card active" data-role="admin" data-email="admin@emart.com">
+            <span class="login-choice-icon"><i class="fas fa-user-shield"></i></span>
+            <span>
+              <strong>Admin</strong>
+              <small>Full control for staff, users, settings, reports, and inventory.</small>
+            </span>
+          </button>
+          <button type="button" class="login-choice-card" data-role="shopkeeper" data-email="shopkeeper@emart.com">
+            <span class="login-choice-icon"><i class="fas fa-cash-register"></i></span>
+            <span>
+              <strong>Shopkeeper</strong>
+              <small>Fast access for checkout, products, customers, and sales reports.</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="selected-role-panel">
+          <div>
+            <span>Selected role</span>
+            <strong id="selectedRoleLabel">Admin</strong>
+          </div>
+          <i class="fas fa-circle-check"></i>
+        </div>
+
         <div class="form-group">
           <label class="form-label" for="login_email">Email Address</label>
           <input type="email" id="login_email" class="form-control" placeholder="admin@emart.com" required autocomplete="email">
@@ -28,22 +53,19 @@
         <div class="form-group">
           <label class="form-label" for="login_password">Password</label>
           <div class="password-input-wrapper">
-            <input type="password" id="login_password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+            <input type="password" id="login_password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
             <button type="button" class="password-toggle-btn" id="passwordToggle" aria-label="Toggle Password Visibility">
               <i class="fas fa-eye"></i>
             </button>
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; font-size: 0.85rem;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #CBD5E1;">
-            <input type="checkbox" id="rememberMe" style="cursor: pointer;"> Remember me
-          </label>
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 24px; font-size: 0.85rem;">
           <a href="/pages/forgot-password.html" style="color: var(--accent-color); font-weight: 500;">Forgot Password?</a>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; border-radius: var(--radius-sm); font-weight: 600;">
-          Sign In
+          <i class="fas fa-right-to-bracket"></i> Sign In
         </button>
       </form>
 
@@ -58,19 +80,26 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.getElementById('loginForm');
+      const roleButtons = document.querySelectorAll('.login-choice-card');
+      const selectedRoleLabel = document.getElementById('selectedRoleLabel');
       const emailInput = document.getElementById('login_email');
       const passwordInput = document.getElementById('login_password');
-      const rememberCheckbox = document.getElementById('rememberMe');
       const passwordToggle = document.getElementById('passwordToggle');
+      let selectedRoleKey = 'admin';
+      let selectedRole = 'Admin';
 
-      // Populate remembered email
-      const rememberedEmail = localStorage.getItem('remembered_email');
-      if (rememberedEmail) {
-        emailInput.value = rememberedEmail;
-        rememberCheckbox.checked = true;
-      }
+      roleButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          roleButtons.forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          selectedRoleKey = button.dataset.role;
+          selectedRole = selectedRoleKey === 'admin' ? 'Admin' : 'Shopkeeper';
+          selectedRoleLabel.textContent = selectedRole;
+          emailInput.placeholder = button.dataset.email;
+          emailInput.focus();
+        });
+      });
 
-      // Hide/Show password functionality
       passwordToggle.addEventListener('click', () => {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
@@ -80,34 +109,38 @@
       // Submit Form
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const email = emailInput.value.trim();
         const password = passwordInput.value;
-        const remember = rememberCheckbox.checked;
+        const submitButton = loginForm.querySelector('button[type="submit"]');
 
         if (!email || !password) {
-          showToast('Please fill in all fields', 'warning');
+          showToast('Please enter your email and password', 'warning');
           return;
         }
 
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In';
+
         try {
           const result = await API.post('/api/auth/login', { email, password });
-          
-          if (remember) {
-            localStorage.setItem('remembered_email', email);
-          } else {
-            localStorage.removeItem('remembered_email');
+
+          if (result.user?.role !== selectedRoleKey) {
+            await API.post('/api/auth/logout', {});
+            showToast(`This account is not registered as ${selectedRole}. Please choose the correct role.`, 'warning');
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="fas fa-right-to-bracket"></i> Sign In';
+            return;
           }
 
-          showToast('Login successful! Redirecting...', 'success');
+          showToast(`${selectedRole} login successful! Redirecting...`, 'success');
           
-          // Redirect based on role
           setTimeout(() => {
             window.location.href = '/dashboard/index.html';
           }, 1000);
         } catch (error) {
-          // Toast is shown inside API.post wrapper in case of network or response error
           console.error('Login submit error:', error);
+          submitButton.disabled = false;
+          submitButton.innerHTML = '<i class="fas fa-right-to-bracket"></i> Sign In';
         }
       });
     });

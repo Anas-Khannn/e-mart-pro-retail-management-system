@@ -3,8 +3,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // If we are on public pages (index, login, signup, forgot-password), skip layout generation
   const path = window.location.pathname;
-  const isPublicPage = path === '/' || 
-                       path.endsWith('index.html') || 
+  const isLandingPage = path === '/' || path === '/index.html';
+  const isPublicPage = isLandingPage || 
                        path.endsWith('login.html') || 
                        path.endsWith('signup.html') || 
                        path.endsWith('forgot-password.html');
@@ -52,6 +52,30 @@ function initTheme() {
   }
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getUserAvatarHtml(user, className) {
+  const name = user.full_name || 'User';
+  const initial = name.charAt(0).toUpperCase();
+
+  if (user.profile_image_url) {
+    return `
+      <div class="${className}">
+        <img src="${escapeHtml(user.profile_image_url)}" alt="${escapeHtml(name)} profile picture">
+      </div>
+    `;
+  }
+
+  return `<div class="${className}">${escapeHtml(initial)}</div>`;
+}
+
 // Generate the sidebar dynamically based on user role
 function renderSidebar(user) {
   const sidebarPlaceholder = document.getElementById('sidebar-placeholder');
@@ -77,7 +101,7 @@ function renderSidebar(user) {
     return;
   }
 
-  const avatarInitial = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U';
+  const avatarHtml = getUserAvatarHtml(user, 'sidebar-user-avatar');
 
   let linksHtml = '';
   menuItems.forEach(item => {
@@ -104,10 +128,10 @@ function renderSidebar(user) {
       ${linksHtml}
     </ul>
     <div class="sidebar-footer">
-      <div class="sidebar-user-avatar">${avatarInitial}</div>
+      ${avatarHtml}
       <div class="sidebar-user-info">
-        <div class="sidebar-user-name">${user.full_name}</div>
-        <div class="sidebar-user-role">${user.role}</div>
+        <div class="sidebar-user-name">${escapeHtml(user.full_name)}</div>
+        <div class="sidebar-user-role">${escapeHtml(user.role)}</div>
       </div>
       <a href="#" id="sidebar-logout-btn" title="Logout" style="color: var(--danger-color); font-size: 1.15rem;">
         <i class="fas fa-sign-out-alt"></i>
@@ -138,6 +162,8 @@ function renderHeader(user) {
   if (!headerPlaceholder) return;
 
   const path = window.location.pathname;
+  const displayName = user.full_name || 'User';
+  const avatarHtml = getUserAvatarHtml(user, 'header-user-avatar');
   let pageTitle = 'E-Mart Management';
   if (path.endsWith('index.html')) pageTitle = 'Dashboard';
   if (path.endsWith('pos.html')) pageTitle = 'POS Checkout';
@@ -161,10 +187,8 @@ function renderHeader(user) {
         <i class="fas fa-moon"></i>
       </button>
       <div class="user-profile">
-        <div style="width: 28px; height: 28px; border-radius: 50%; background-color: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
-          ${user.role === 'admin' ? 'A' : 'S'}
-        </div>
-        <span style="font-size: 0.875rem; font-weight: 500; display: inline-block;">${user.full_name.split(' ')[0]}</span>
+        ${avatarHtml}
+        <span style="font-size: 0.875rem; font-weight: 500; display: inline-block;">${escapeHtml(displayName.split(' ')[0])}</span>
       </div>
     </div>
   `;

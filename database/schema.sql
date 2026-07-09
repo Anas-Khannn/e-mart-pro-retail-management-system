@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(100) NOT NULL UNIQUE,
   phone VARCHAR(20) NULL,
   password_hash VARCHAR(255) NOT NULL,
+  profile_image_url VARCHAR(255) NULL,
   role ENUM('admin', 'shopkeeper') NOT NULL DEFAULT 'shopkeeper',
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -137,10 +138,10 @@ WHERE id = NEW.product_id;
 
 -- Seeding default Admin and Shopkeeper
 -- Default password for both is 'admin123'
--- Hashed using bcryptjs ($2a$10$bSWhk2WJ/4214UqyB730jO6tP1Kskk1W2h6dGvP1.3uPmsR8s/Zqu)
+-- Hashed using bcryptjs ($2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m)
 INSERT INTO users (full_name, email, phone, password_hash, role, status) VALUES 
-('System Admin', 'admin@emart.com', '+1234567890', '$2a$10$bSWhk2WJ/4214UqyB730jO6tP1Kskk1W2h6dGvP1.3uPmsR8s/Zqu', 'admin', 'active'),
-('John Shopkeeper', 'shopkeeper@emart.com', '+1987654321', '$2a$10$bSWhk2WJ/4214UqyB730jO6tP1Kskk1W2h6dGvP1.3uPmsR8s/Zqu', 'shopkeeper', 'active');
+('System Admin', 'admin@emart.com', '+1234567890', '$2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m', 'admin', 'active'),
+('John Shopkeeper', 'shopkeeper@emart.com', '+1987654321', '$2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m', 'shopkeeper', 'active');
 
 -- Seeding categories
 INSERT INTO categories (name, description) VALUES

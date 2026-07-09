@@ -242,28 +242,40 @@
       </div>
     </div>
     <div class="hero-illustration">
-      <!-- A modern visual card mockup of dashboard instead of placeholder images -->
-      <div class="floating" style="width: 85%; background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 24px; box-shadow: 0 30px 60px rgba(0,0,0,0.4);">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
-          <div style="display: flex; gap: 6px;">
-            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #EF4444;"></span>
-            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #F59E0B;"></span>
-            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #10B981;"></span>
+      <div class="retail-3d-stage" id="retail3dStage">
+        <div class="retail-3d-object">
+          <div class="store-cube">
+            <div class="store-face store-face-front">
+              <div class="store-sign"><i class="fas fa-store"></i> E-Mart</div>
+              <div class="store-window-grid">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="store-counter">
+                <strong>$12.4K</strong>
+                <small>Today</small>
+              </div>
+            </div>
+            <div class="store-face store-face-right">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="store-face store-face-top"></div>
           </div>
-          <span style="font-size: 0.75rem; color: #64748B;">e-mart-dashboard-mock.io</span>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-          <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-            <div style="font-size: 0.7rem; color: #94A3B8; margin-bottom: 4px;">TODAY REVENUE</div>
-            <div style="font-weight: 700; color: #10B981; font-size: 1.25rem;">$12,490.50</div>
+          <div class="product-stack stack-left">
+            <span></span><span></span><span></span>
           </div>
-          <div style="background: rgba(15,23,42,0.6); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-            <div style="font-size: 0.7rem; color: #94A3B8; margin-bottom: 4px;">TOTAL SALES</div>
-            <div style="font-weight: 700; color: #06B6D4; font-size: 1.25rem;">1,489 Orders</div>
+          <div class="product-stack stack-right">
+            <span></span><span></span><span></span>
           </div>
-        </div>
-        <div style="height: 120px; background: repeating-linear-gradient(45deg, rgba(37,99,235,0.1) 0px, rgba(37,99,235,0.1) 10px, transparent 10px, transparent 20px); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-          <i class="fas fa-chart-line" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+          <div class="floating-panel sales-panel">
+            <i class="fas fa-chart-line"></i>
+            <span>Live Sales</span>
+            <strong>+28%</strong>
+          </div>
+          <div class="floating-panel stock-panel">
+            <i class="fas fa-boxes-stacked"></i>
+            <span>Stock</span>
+            <strong>800</strong>
+          </div>
         </div>
       </div>
     </div>
@@ -440,15 +452,15 @@
           <div class="contact-details">
             <div class="contact-item">
               <i class="fas fa-map-marker-alt"></i>
-              <span>456 Retail Parkway, Shopping District, NY 10001</span>
+              <span>Room # 39 - Hostel 3 UET Peshawar</span>
             </div>
             <div class="contact-item">
               <i class="fas fa-phone-alt"></i>
-              <span>+1 (555) 123-4567</span>
+              <span>+92 3128941423</span>
             </div>
             <div class="contact-item">
               <i class="fas fa-envelope"></i>
-              <span>support@emart.com</span>
+              <span>anaskhandev728@gmail.com</span>
             </div>
           </div>
         </div>
@@ -512,6 +524,22 @@
     // Statistics Counter Animation
     const statsSection = document.getElementById('stats');
     let countersStarted = false;
+    const retail3dStage = document.getElementById('retail3dStage');
+
+    if (retail3dStage) {
+      retail3dStage.addEventListener('pointermove', (event) => {
+        const rect = retail3dStage.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width - 0.5) * 18;
+        const y = ((event.clientY - rect.top) / rect.height - 0.5) * -14;
+        retail3dStage.style.setProperty('--tilt-x', `${y}deg`);
+        retail3dStage.style.setProperty('--tilt-y', `${x}deg`);
+      });
+
+      retail3dStage.addEventListener('pointerleave', () => {
+        retail3dStage.style.setProperty('--tilt-x', '0deg');
+        retail3dStage.style.setProperty('--tilt-y', '0deg');
+      });
+    }
 
     function startCounters() {
       const counters = document.querySelectorAll('.counter');
