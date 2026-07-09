@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const mysql = require('./database/db');
 const dbInit = require('./database/init');
+const MySQLSessionStore = require('./database/session-store');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
@@ -24,17 +25,6 @@ function initializeAppDatabase() {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Express Session Config
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'emart_session_secret_2026_x78',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 1000 * 60 * 60 * 8, // 8 hours session life
-    secure: false // Set to true if running HTTPS
-  }
-}));
-
 if (process.env.VERCEL) {
   app.use(async (req, res, next) => {
     if (!req.path.startsWith('/api')) {
@@ -50,6 +40,24 @@ if (process.env.VERCEL) {
     }
   });
 }
+
+app.set('trust proxy', 1);
+
+// Express Session Config
+app.use(session({
+  name: 'emart.sid',
+  secret: process.env.SESSION_SECRET || 'emart_session_secret_2026_x78',
+  store: new MySQLSessionStore(),
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL),
+    maxAge: 1000 * 60 * 60 * 8 // 8 hours session life
+  }
+}));
 
 // Create upload directories if not exist
 const uploadsDir = process.env.VERCEL ? path.join('/tmp', 'uploads') : path.join(__dirname, 'uploads');

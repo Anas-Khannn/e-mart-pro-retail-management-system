@@ -125,6 +125,15 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- 11. Express Sessions Table
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id VARCHAR(255) PRIMARY KEY,
+  expires BIGINT UNSIGNED NOT NULL,
+  data LONGTEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_sessions_expires (expires)
+);
+
 -- Triggers to automatically decrease product quantities on successful checkouts
 DROP TRIGGER IF EXISTS after_sale_item_insert;
 
