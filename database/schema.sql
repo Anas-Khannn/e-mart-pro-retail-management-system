@@ -1,8 +1,5 @@
 -- MySQL Database Schema for E-Mart Management System
 
-CREATE DATABASE IF NOT EXISTS emart_db;
-USE emart_db;
-
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -129,6 +126,8 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- Triggers to automatically decrease product quantities on successful checkouts
+DROP TRIGGER IF EXISTS after_sale_item_insert;
+
 CREATE TRIGGER after_sale_item_insert
 AFTER INSERT ON sale_items
 FOR EACH ROW
@@ -139,12 +138,12 @@ WHERE id = NEW.product_id;
 -- Seeding default Admin and Shopkeeper
 -- Default password for both is 'admin123'
 -- Hashed using bcryptjs ($2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m)
-INSERT INTO users (full_name, email, phone, password_hash, role, status) VALUES 
+INSERT IGNORE INTO users (full_name, email, phone, password_hash, role, status) VALUES 
 ('System Admin', 'admin@emart.com', '+1234567890', '$2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m', 'admin', 'active'),
 ('John Shopkeeper', 'shopkeeper@emart.com', '+1987654321', '$2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m', 'shopkeeper', 'active');
 
 -- Seeding categories
-INSERT INTO categories (name, description) VALUES
+INSERT IGNORE INTO categories (name, description) VALUES
 ('Groceries', 'Daily food items, produce, beverages, and household needs'),
 ('Electronics', 'Gadgets, phone accessories, computers, and electric appliances'),
 ('Clothing', 'Men, women, and children fashion garments'),
@@ -152,19 +151,19 @@ INSERT INTO categories (name, description) VALUES
 ('Pharmacy', 'Over-the-counter medicines, vitamins, and healthcare products');
 
 -- Seeding suppliers
-INSERT INTO suppliers (name, phone, email, address) VALUES
+INSERT IGNORE INTO suppliers (name, phone, email, address) VALUES
 ('Global Foods Distributors', '+18005550199', 'info@globalfoods.com', '100 Distribution Way, NJ'),
 ('TechZone Wholesale', '+18005550188', 'sales@techzone.com', '500 Silicon Alley, CA'),
 ('Aura Fashion Inc.', '+18005550177', 'contact@aurafashion.com', '23 Garment District, NY');
 
 -- Seeding default/walk-in customers
-INSERT INTO customers (name, email, phone, address, loyalty_points) VALUES
+INSERT IGNORE INTO customers (name, email, phone, address, loyalty_points) VALUES
 ('Walking Customer', 'walkin@emart.com', '0000000000', 'In-Store Walk-in', 0),
 ('Jane Miller', 'jane.miller@gmail.com', '5551234567', '782 Maple St, Cityville', 150),
 ('David Smith', 'david.smith@yahoo.com', '5559876543', '432 Oak Rd, Metroville', 85);
 
 -- Seeding initial products
-INSERT INTO products (name, sku, category_id, purchase_price, selling_price, quantity, supplier_id, image_url) VALUES
+INSERT IGNORE INTO products (name, sku, category_id, purchase_price, selling_price, quantity, supplier_id, image_url) VALUES
 ('Organic Whole Milk 1 Gallon', 'GR-MILK-001', 1, 2.50, 3.99, 100, 1, '/uploads/milk.png'),
 ('Premium Basmati Rice 5kg', 'GR-RICE-002', 1, 8.00, 12.49, 80, 1, '/uploads/rice.png'),
 ('Wireless Bluetooth Earbuds', 'EL-EAR-003', 2, 12.00, 24.99, 50, 2, '/uploads/earbuds.png'),
@@ -173,5 +172,5 @@ INSERT INTO products (name, sku, category_id, purchase_price, selling_price, qua
 ('Non-Stick Frying Pan 10-inch', 'HL-PAN-006', 4, 11.50, 21.99, 30, 3, '/uploads/pan.png');
 
 -- Seeding default settings
-INSERT INTO settings (store_name, logo_url, address, phone, email, currency, tax_percentage) VALUES
-('E-Mart Superstore', '/images/logo.png', '456 Retail Parkway, Shopping District, NY 10001', '+1 (555) 123-4567', 'support@emart.com', '$', 8.25);
+INSERT IGNORE INTO settings (id, store_name, logo_url, address, phone, email, currency, tax_percentage) VALUES
+(1, 'E-Mart Superstore', '/images/logo.png', '456 Retail Parkway, Shopping District, NY 10001', '+1 (555) 123-4567', 'support@emart.com', '$', 8.25);

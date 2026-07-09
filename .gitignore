@@ -2,7 +2,9 @@
 node_modules/
 
 # Environment configurations
-.env
+.env*
+!.env.example
+!.env.local.example
 
 # Local Uploads
 uploads/product-*

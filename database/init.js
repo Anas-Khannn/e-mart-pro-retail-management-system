@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('../config/env');
 
 async function initializeDatabase() {
   const host = process.env.DB_HOST || 'localhost';
@@ -60,24 +60,12 @@ async function initializeDatabase() {
   });
 
   try {
-    // Step 4: Check if tables exist by querying for the 'users' table
-    const [tables] = await connection.query(`
-      SELECT TABLE_NAME 
-      FROM information_schema.tables 
-      WHERE table_schema = ? AND table_name = 'users'
-    `, [database]);
+    console.log(`[DB Init] Applying idempotent schema migration from schema.sql...`);
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
-    if (tables.length === 0) {
-      console.log(`[DB Init] Tables not found. Initializing schema from schema.sql...`);
-      const schemaPath = path.join(__dirname, 'schema.sql');
-      const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-
-      // Execute schema.sql
-      await connection.query(schemaSql);
-      console.log(`[DB Init] Database schema imported successfully with seed data.`);
-    } else {
-      console.log(`[DB Init] Database tables already exist. Skipping schema initialization.`);
-    }
+    await connection.query(schemaSql);
+    console.log(`[DB Init] Database schema migration completed.`);
 
     const [columns] = await connection.query(`
       SELECT COLUMN_NAME

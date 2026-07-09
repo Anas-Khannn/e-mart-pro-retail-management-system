@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+require('./config/env');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
