@@ -2,12 +2,10 @@ const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
 require('../config/env');
+const getDatabaseConfig = require('./config');
 
 async function initializeDatabase() {
-  const host = process.env.DB_HOST || 'localhost';
-  const user = process.env.DB_USER || 'root';
-  const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_NAME || 'emart_db';
+  const { host, port, user, password, database } = getDatabaseConfig();
   const isServerless = Boolean(process.env.VERCEL);
 
   const fail = (message, error) => {
@@ -22,13 +20,14 @@ async function initializeDatabase() {
     process.exit(1);
   };
 
-  console.log(`[DB Init] Connecting to MySQL at ${host} to check/create database...`);
+  console.log(`[DB Init] Connecting to MySQL at ${host}:${port} to check/create database...`);
 
   // Step 1: Connect to MySQL without specifying database name first
   let tempConnection;
   try {
     tempConnection = await mysql.createConnection({
       host,
+      port,
       user,
       password,
       multipleStatements: true
@@ -53,6 +52,7 @@ async function initializeDatabase() {
   console.log(`[DB Init] Connecting directly to database "${database}"...`);
   const connection = await mysql.createConnection({
     host,
+    port,
     user,
     password,
     database,

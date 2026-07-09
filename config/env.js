@@ -9,7 +9,8 @@ const isProduction =
 const envFile = isProduction ? '.env' : '.env.local';
 
 dotenv.config({
-  path: path.resolve(__dirname, '..', envFile)
+  path: path.resolve(__dirname, '..', envFile),
+  override: isProduction
 });
 
 module.exports = {
