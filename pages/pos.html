@@ -399,7 +399,7 @@
 
       posProductsGrid.innerHTML = products.map(p => {
         const visual = getProductVisual(p);
-        const isLow = p.quantity < 15;
+        const isLow = p.quantity <= p.min_stock;
         const currencySym = storeSettings.currency || '$';
 
         return `
@@ -522,6 +522,11 @@
     window.addProductToCart = (id) => {
       const product = catalog.find(p => p.id === id);
       if (!product) return;
+
+      if (product.quantity <= 0) {
+        showToast(`Cannot add product. "${product.name}" is out of stock!`, 'danger');
+        return;
+      }
 
       const existingCartItem = cart.find(item => item.id === id);
       if (existingCartItem) {

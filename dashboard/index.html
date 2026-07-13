@@ -66,8 +66,18 @@
               <h3>Low Stock Items</h3>
               <div class="value" id="card-lowstock">0</div>
             </div>
-            <div class="metric-icon-box red" id="lowstock-box">
+            <div class="metric-icon-box yellow" id="lowstock-box">
               <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-info">
+              <h3>Out of Stock Items</h3>
+              <div class="value" id="card-outofstock">0</div>
+            </div>
+            <div class="metric-icon-box red" id="outofstock-box">
+              <i class="fas fa-ban"></i>
             </div>
           </div>
         </div>
@@ -157,6 +167,35 @@
 
         </div>
 
+        <!-- Low Stock Alerts Section -->
+        <div class="table-card" style="margin-top: 24px;">
+          <div class="table-header">
+            <div class="table-title">
+              <h3>Low Stock & Out of Stock Alerts</h3>
+            </div>
+            <a href="/pages/products.html?filter=low" class="btn btn-secondary btn-sm">Manage Inventory</a>
+          </div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Product Name</th>
+                  <th>SKU Code</th>
+                  <th>Current Qty</th>
+                  <th>Min Stock Limit</th>
+                  <th>Status</th>
+                  <th>Restock Recommendation</th>
+                </tr>
+              </thead>
+              <tbody id="low-stock-alerts-tbody">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted);">Loading stock alerts...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </main>
     </div>
   </div>
@@ -180,8 +219,16 @@
         const lowStockCard = document.getElementById('card-lowstock');
         lowStockCard.innerText = lowStock.toLocaleString();
         if (lowStock > 0) {
-          lowStockCard.style.color = 'var(--danger-color)';
+          lowStockCard.style.color = 'var(--warning-color)';
           document.getElementById('lowstock-box').style.animation = 'pulse 2s infinite';
+        }
+
+        const outOfStock = stats.outOfStockCount;
+        const outOfStockCard = document.getElementById('card-outofstock');
+        outOfStockCard.innerText = outOfStock.toLocaleString();
+        if (outOfStock > 0) {
+          outOfStockCard.style.color = 'var(--danger-color)';
+          document.getElementById('outofstock-box').style.animation = 'pulse 2s infinite';
         }
       } catch (err) {
         console.error('Error loading dashboard stats:', err);
@@ -225,7 +272,43 @@
           `).join('');
         }
 
-        // 3. Render Chart.js graphs
+        // 3. Render Low Stock Alerts Table
+        const alertsTbody = document.getElementById('low-stock-alerts-tbody');
+        if (!details.alerts || details.alerts.length === 0) {
+          alertsTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No low stock alerts. All products are well stocked.</td></tr>`;
+        } else {
+          alertsTbody.innerHTML = details.alerts.map(alert => {
+            let statusBadge = '';
+            if (alert.quantity === 0) {
+              statusBadge = `<span class="badge badge-danger">Out of Stock</span>`;
+            } else {
+              statusBadge = `<span class="badge badge-warning">Low Stock</span>`;
+            }
+
+            let recommendation = alert.restock_message;
+            let recClass = '';
+            if (alert.quantity === 0) {
+              recClass = 'style="color: var(--danger-color); font-weight: bold;"';
+            } else if (alert.days_remaining !== null) {
+              recClass = 'style="color: var(--warning-color); font-weight: 600;"';
+            } else {
+              recClass = 'style="color: var(--text-muted);"';
+            }
+
+            return `
+              <tr>
+                <td><strong>${alert.name}</strong></td>
+                <td><code style="font-size: 0.8rem; background: var(--bg-color); padding: 2px 6px; border-radius:4px; border:1px solid var(--border-color);">${alert.sku}</code></td>
+                <td><span style="font-weight: bold; color: ${alert.quantity === 0 ? 'var(--danger-color)' : 'var(--warning-color)'};">${alert.quantity}</span></td>
+                <td>${alert.min_stock}</td>
+                <td>${statusBadge}</td>
+                <td ${recClass}>${recommendation}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // 4. Render Chart.js graphs
         renderCharts(details);
 
       } catch (err) {
