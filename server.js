@@ -379,9 +379,13 @@ app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
     const [ordersCount] = await mysql.query("SELECT COUNT(*) AS total FROM sales");
     const totalOrders = ordersCount[0].total || 0;
 
-    // 6. Low Stock Products Count (< 15 items)
-    const [lowStock] = await mysql.query("SELECT COUNT(*) AS total FROM products WHERE quantity < 15");
+    // 6. Low Stock Products Count (quantity > 0 AND quantity <= min_stock)
+    const [lowStock] = await mysql.query("SELECT COUNT(*) AS total FROM products WHERE quantity > 0 AND quantity <= min_stock");
     const lowStockCount = lowStock[0].total || 0;
+
+    // 7. Out of Stock Products Count (quantity = 0)
+    const [outOfStock] = await mysql.query("SELECT COUNT(*) AS total FROM products WHERE quantity = 0");
+    const outOfStockCount = outOfStock[0].total || 0;
 
     res.json({
       totalRevenue,
@@ -389,7 +393,8 @@ app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
       totalProducts,
       totalCustomers,
       totalOrders,
-      lowStockCount
+      lowStockCount,
+      outOfStockCount
     });
   } catch (error) {
     console.error('Stats query error:', error);
@@ -426,10 +431,51 @@ app.get('/api/dashboard/details', requireAuth, async (req, res) => {
       GROUP BY c.id
     `);
 
+    // Fetch products that are Low Stock or Out of Stock with average daily sales in the last 30 days
+    const [stockAlerts] = await mysql.query(`
+      SELECT 
+        p.id, p.name, p.sku, p.quantity, p.min_stock,
+        IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales
+      FROM products p
+      LEFT JOIN sale_items si ON p.id = si.product_id
+      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.status = 'completed'
+      WHERE p.quantity <= p.min_stock
+      GROUP BY p.id
+      ORDER BY p.quantity ASC
+    `);
+
+    const alerts = stockAlerts.map(alert => {
+      const qty = alert.quantity;
+      const minStock = alert.min_stock;
+      const avgSales = parseFloat(alert.avg_daily_sales) || 0;
+      let restockMsg = 'No recent sales';
+      let daysRemaining = null;
+
+      if (qty === 0) {
+        restockMsg = 'Recommended Restock: Immediately';
+        daysRemaining = 0;
+      } else if (avgSales > 0) {
+        daysRemaining = Math.round(qty / avgSales);
+        restockMsg = `Recommended Restock in ${daysRemaining} Days`;
+      }
+
+      return {
+        id: alert.id,
+        name: alert.name,
+        sku: alert.sku,
+        quantity: qty,
+        min_stock: minStock,
+        avg_daily_sales: avgSales,
+        days_remaining: daysRemaining,
+        restock_message: restockMsg
+      };
+    });
+
     res.json({
       recentSales,
       topProducts,
-      categoriesInventory
+      categoriesInventory,
+      alerts
     });
   } catch (error) {
     console.error('Dashboard details error:', error);
@@ -443,15 +489,18 @@ app.get('/api/dashboard/details', requireAuth, async (req, res) => {
 
 // Get Products
 app.get('/api/products', requireAuth, async (req, res) => {
-  const { search, category_id, supplier_id, sort_by, sort_order, page, limit } = req.query;
+  const { search, category_id, supplier_id, stock_status, sort_by, sort_order, page, limit } = req.query;
   const pLimit = parseInt(limit) || 10;
   const pOffset = ((parseInt(page) || 1) - 1) * pLimit;
 
   let query = `
-    SELECT p.*, c.name AS category_name, s.name AS supplier_name
+    SELECT p.*, c.name AS category_name, s.name AS supplier_name,
+           IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     LEFT JOIN suppliers s ON p.supplier_id = s.id
+    LEFT JOIN sale_items si ON p.id = si.product_id
+    LEFT JOIN sales sa ON si.sale_id = sa.id AND sa.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND sa.status = 'completed'
     WHERE 1=1
   `;
   const params = [];
@@ -470,6 +519,16 @@ app.get('/api/products', requireAuth, async (req, res) => {
     query += ' AND p.supplier_id = ?';
     params.push(supplier_id);
   }
+
+  if (stock_status === 'in_stock') {
+    query += ' AND p.quantity > p.min_stock';
+  } else if (stock_status === 'low_stock') {
+    query += ' AND p.quantity > 0 AND p.quantity <= p.min_stock';
+  } else if (stock_status === 'out_of_stock') {
+    query += ' AND p.quantity = 0';
+  }
+
+  query += ' GROUP BY p.id';
 
   // Sorting
   const allowedSortCols = ['name', 'sku', 'selling_price', 'quantity', 'created_at'];
@@ -502,12 +561,14 @@ app.get('/api/products', requireAuth, async (req, res) => {
 
 // Add Product with Image
 app.post('/api/products', requireAuth, upload.single('product_image'), async (req, res) => {
-  const { name, sku, category_id, purchase_price, selling_price, quantity, supplier_id } = req.body;
+  const { name, sku, category_id, purchase_price, selling_price, quantity, min_stock, supplier_id } = req.body;
   const image_url = req.file ? `/uploads/${req.file.filename}` : '/images/placeholder-product.png';
 
   if (!name || !sku || !purchase_price || !selling_price || quantity === undefined) {
     return res.status(400).json({ message: 'Name, SKU, prices, and quantity are required.' });
   }
+
+  const minStockVal = min_stock !== undefined ? parseInt(min_stock) : 5;
 
   try {
     // Check if SKU exists
@@ -517,9 +578,9 @@ app.post('/api/products', requireAuth, upload.single('product_image'), async (re
     }
 
     const [result] = await mysql.query(`
-      INSERT INTO products (name, sku, category_id, purchase_price, selling_price, quantity, supplier_id, image_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [name, sku, category_id || null, purchase_price, selling_price, quantity, supplier_id || null, image_url]);
+      INSERT INTO products (name, sku, category_id, purchase_price, selling_price, quantity, min_stock, supplier_id, image_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [name, sku, category_id || null, purchase_price, selling_price, quantity, minStockVal, supplier_id || null, image_url]);
 
     await mysql.query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)', 
       [req.session.user.id, 'Add Product', `Added product SKU: ${sku} - ${name} x${quantity}`]);
@@ -534,7 +595,7 @@ app.post('/api/products', requireAuth, upload.single('product_image'), async (re
 // Update Product
 app.put('/api/products/:id', requireAuth, upload.single('product_image'), async (req, res) => {
   const { id } = req.params;
-  const { name, sku, category_id, purchase_price, selling_price, quantity, supplier_id } = req.body;
+  const { name, sku, category_id, purchase_price, selling_price, quantity, min_stock, supplier_id } = req.body;
 
   try {
     // Check product exists
@@ -556,11 +617,13 @@ app.put('/api/products/:id', requireAuth, upload.single('product_image'), async 
       image_url = `/uploads/${req.file.filename}`;
     }
 
+    const minStockVal = min_stock !== undefined ? parseInt(min_stock) : 5;
+
     await mysql.query(`
       UPDATE products 
-      SET name = ?, sku = ?, category_id = ?, purchase_price = ?, selling_price = ?, quantity = ?, supplier_id = ?, image_url = ?
+      SET name = ?, sku = ?, category_id = ?, purchase_price = ?, selling_price = ?, quantity = ?, min_stock = ?, supplier_id = ?, image_url = ?
       WHERE id = ?
-    `, [name, sku, category_id || null, purchase_price, selling_price, quantity, supplier_id || null, image_url, id]);
+    `, [name, sku, category_id || null, purchase_price, selling_price, quantity, minStockVal, supplier_id || null, image_url, id]);
 
     await mysql.query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)', 
       [req.session.user.id, 'Update Product', `Updated product ID: ${id} - SKU: ${sku}`]);
@@ -620,7 +683,7 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
 app.get('/api/pos/products', requireAuth, async (req, res) => {
   const { query, category_id } = req.query;
   let sql = `
-    SELECT p.id, p.name, p.sku, p.category_id, c.name AS category_name, p.selling_price, p.quantity, p.image_url
+    SELECT p.id, p.name, p.sku, p.category_id, c.name AS category_name, p.selling_price, p.quantity, p.min_stock, p.image_url
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.quantity > 0
@@ -671,6 +734,9 @@ app.post('/api/pos/checkout', requireAuth, async (req, res) => {
         }
         
         const prod = prodRecord[0];
+        if (prod.quantity <= 0) {
+          throw new Error(`Product ${prod.name} is out of stock.`);
+        }
         if (prod.quantity < item.quantity) {
           throw new Error(`Insufficient stock for product: ${prod.name}. Available: ${prod.quantity}. Required: ${item.quantity}.`);
         }
