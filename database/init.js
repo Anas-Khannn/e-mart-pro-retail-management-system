@@ -77,6 +77,17 @@ async function initializeDatabase() {
       await connection.query(`ALTER TABLE users ADD COLUMN profile_image_url VARCHAR(255) NULL AFTER password_hash`);
       console.log(`[DB Init] Added users.profile_image_url column.`);
     }
+
+    const [prodColumns] = await connection.query(`
+      SELECT COLUMN_NAME
+      FROM information_schema.columns
+      WHERE table_schema = ? AND table_name = 'products' AND column_name = 'min_stock'
+    `, [database]);
+
+    if (prodColumns.length === 0) {
+      await connection.query(`ALTER TABLE products ADD COLUMN min_stock INT NOT NULL DEFAULT 5 AFTER quantity`);
+      console.log(`[DB Init] Added products.min_stock column.`);
+    }
   } catch (error) {
     fail('[DB Init] Error initializing database schema', error);
   } finally {

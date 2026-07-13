@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS products (
   purchase_price DECIMAL(10, 2) NOT NULL,
   selling_price DECIMAL(10, 2) NOT NULL,
   quantity INT NOT NULL DEFAULT 0,
+  min_stock INT NOT NULL DEFAULT 5,
   supplier_id INT NULL,
   image_url VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -172,13 +173,13 @@ INSERT IGNORE INTO customers (name, email, phone, address, loyalty_points) VALUE
 ('David Smith', 'david.smith@yahoo.com', '5559876543', '432 Oak Rd, Metroville', 85);
 
 -- Seeding initial products
-INSERT IGNORE INTO products (name, sku, category_id, purchase_price, selling_price, quantity, supplier_id, image_url) VALUES
-('Organic Whole Milk 1 Gallon', 'GR-MILK-001', 1, 2.50, 3.99, 100, 1, '/uploads/milk.png'),
-('Premium Basmati Rice 5kg', 'GR-RICE-002', 1, 8.00, 12.49, 80, 1, '/uploads/rice.png'),
-('Wireless Bluetooth Earbuds', 'EL-EAR-003', 2, 12.00, 24.99, 50, 2, '/uploads/earbuds.png'),
-('USB-C Fast Charger Block 20W', 'EL-CHG-004', 2, 4.50, 9.99, 150, 2, '/uploads/charger.png'),
-('Casual Cotton T-Shirt Unisex (Black/M)', 'CL-TSH-005', 3, 5.00, 14.99, 75, 3, '/uploads/tshirt.png'),
-('Non-Stick Frying Pan 10-inch', 'HL-PAN-006', 4, 11.50, 21.99, 30, 3, '/uploads/pan.png');
+INSERT IGNORE INTO products (name, sku, category_id, purchase_price, selling_price, quantity, min_stock, supplier_id, image_url) VALUES
+('Organic Whole Milk 1 Gallon', 'GR-MILK-001', 1, 2.50, 3.99, 100, 10, 1, '/uploads/milk.png'),
+('Premium Basmati Rice 5kg', 'GR-RICE-002', 1, 8.00, 12.49, 8, 10, 1, '/uploads/rice.png'),
+('Wireless Bluetooth Earbuds', 'EL-EAR-003', 2, 12.00, 24.99, 0, 5, 2, '/uploads/earbuds.png'),
+('USB-C Fast Charger Block 20W', 'EL-CHG-004', 2, 4.50, 9.99, 150, 15, 2, '/uploads/charger.png'),
+('Casual Cotton T-Shirt Unisex (Black/M)', 'CL-TSH-005', 3, 5.00, 14.99, 75, 8, 3, '/uploads/tshirt.png'),
+('Non-Stick Frying Pan 10-inch', 'HL-PAN-006', 4, 11.50, 21.99, 2, 5, 3, '/uploads/pan.png');
 
 -- Seeding default settings
 INSERT IGNORE INTO settings (id, store_name, logo_url, address, phone, email, currency, tax_percentage) VALUES
