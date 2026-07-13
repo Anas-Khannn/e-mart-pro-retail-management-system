@@ -47,6 +47,14 @@
               <select id="supplierFilter" class="select-filter">
                 <option value="">All Suppliers</option>
               </select>
+
+              <!-- Stock Status Filter -->
+              <select id="stockStatusFilter" class="select-filter">
+                <option value="">All Stock Statuses</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
             </div>
 
             <div style="display: flex; gap: 12px; align-items: center;">
@@ -159,10 +167,20 @@
               <input type="number" id="prod_qty" class="form-control" min="0" placeholder="0" required>
             </div>
             <div class="form-group">
+              <label class="form-label" for="prod_min_stock">Minimum Stock Limit *</label>
+              <input type="number" id="prod_min_stock" class="form-control" min="0" placeholder="5" value="5" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label" for="prod_supplier">Supplier</label>
               <select id="prod_supplier" class="form-control">
                 <option value="">Select Supplier</option>
               </select>
+            </div>
+            <div class="form-group">
+              <!-- Empty spacer to balance layout -->
             </div>
           </div>
 
@@ -205,6 +223,7 @@
     const paginationInfo = document.getElementById('paginationInfo');
     const prevPageBtn = document.getElementById('prevPageBtn');
     const nextPageBtn = document.getElementById('nextPageBtn');
+    const stockStatusFilter = document.getElementById('stockStatusFilter');
 
     const productModal = document.getElementById('productModal');
     const productForm = document.getElementById('productForm');
@@ -220,11 +239,19 @@
     const prodPurchaseInput = document.getElementById('prod_purchase');
     const prodSellingInput = document.getElementById('prod_selling');
     const prodQtyInput = document.getElementById('prod_qty');
+    const prodMinStockInput = document.getElementById('prod_min_stock');
     const prodSupplierSelect = document.getElementById('prod_supplier');
     const prodImageFile = document.getElementById('prod_image');
     const fileInputText = document.getElementById('fileInputText');
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Check query params for stock status filter redirect from dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      const filterParam = urlParams.get('filter');
+      if (filterParam === 'low') {
+        stockStatusFilter.value = 'low_stock';
+      }
+
       // Load filters on start
       loadDropdowns();
       
@@ -235,6 +262,7 @@
       searchBar.addEventListener('input', () => { currentPage = 1; loadCatalog(); });
       categoryFilter.addEventListener('change', () => { currentPage = 1; loadCatalog(); });
       supplierFilter.addEventListener('change', () => { currentPage = 1; loadCatalog(); });
+      stockStatusFilter.addEventListener('change', () => { currentPage = 1; loadCatalog(); });
       sortBy.addEventListener('change', () => loadCatalog());
       sortOrder.addEventListener('change', () => loadCatalog());
 
@@ -268,6 +296,7 @@
         formData.append('purchase_price', prodPurchaseInput.value);
         formData.append('selling_price', prodSellingInput.value);
         formData.append('quantity', prodQtyInput.value);
+        formData.append('min_stock', prodMinStockInput.value);
         formData.append('supplier_id', prodSupplierSelect.value);
         
         if (prodImageFile.files.length > 0) {
@@ -322,6 +351,7 @@
       const search = searchBar.value.trim();
       const cat = categoryFilter.value;
       const sup = supplierFilter.value;
+      const stockStatus = stockStatusFilter.value;
       const sort = sortBy.value;
       const order = sortOrder.value;
 
@@ -329,6 +359,7 @@
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (cat) url += `&category_id=${cat}`;
       if (sup) url += `&supplier_id=${sup}`;
+      if (stockStatus) url += `&stock_status=${stockStatus}`;
 
       try {
         const response = await API.get(url);
@@ -384,10 +415,19 @@
         
         // Stock level status formatting
         let stockBadge = '';
+        let restockRec = '';
         if (prod.quantity === 0) {
           stockBadge = `<span class="badge badge-danger">Out of Stock (0)</span>`;
-        } else if (prod.quantity < 15) {
+          restockRec = `<div style="font-size: 0.7rem; color: var(--danger-color); margin-top: 4px; font-weight:600;">Restock Immediately</div>`;
+        } else if (prod.quantity <= prod.min_stock) {
           stockBadge = `<span class="badge badge-warning">Low Stock (${prod.quantity})</span>`;
+          const avgSales = parseFloat(prod.avg_daily_sales) || 0;
+          if (avgSales > 0) {
+            const days = Math.round(prod.quantity / avgSales);
+            restockRec = `<div style="font-size: 0.7rem; color: var(--warning-color); margin-top: 4px; font-weight:600;">Restock in ${days} Days</div>`;
+          } else {
+            restockRec = `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">No recent sales</div>`;
+          }
         } else {
           stockBadge = `<span class="badge badge-success">In Stock (${prod.quantity})</span>`;
         }
@@ -404,7 +444,7 @@
             <td>${prod.category_name || '<span style="color:var(--text-muted)">Uncategorized</span>'}</td>
             <td>$${parseFloat(prod.purchase_price).toFixed(2)}</td>
             <td style="font-weight: 600; color: var(--primary-color);">$${parseFloat(prod.selling_price).toFixed(2)}</td>
-            <td>${stockBadge}</td>
+            <td>${stockBadge}${restockRec}</td>
             <td>${prod.supplier_name || '<span style="color:var(--text-muted)">None</span>'}</td>
             <td style="text-align: center; white-space: nowrap;">
               <button class="btn btn-secondary btn-sm" onclick="editProduct(${prod.id})" style="padding: 6px; margin-right: 4px;" title="Edit Product"><i class="fas fa-edit"></i></button>
@@ -460,6 +500,7 @@
           prodPurchaseInput.value = prod.purchase_price;
           prodSellingInput.value = prod.selling_price;
           prodQtyInput.value = prod.quantity;
+          prodMinStockInput.value = prod.min_stock !== undefined ? prod.min_stock : 5;
           prodSupplierSelect.value = prod.supplier_id || '';
           
           if (prod.image_url) {
