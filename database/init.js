@@ -5,7 +5,7 @@ require('../config/env');
 const getDatabaseConfig = require('./config');
 
 async function initializeDatabase() {
-  const { host, port, user, password, database } = getDatabaseConfig();
+  const { host, port, user, password, database, ssl } = getDatabaseConfig();
   const isServerless = Boolean(process.env.VERCEL);
 
   const fail = (message, error) => {
@@ -30,6 +30,7 @@ async function initializeDatabase() {
       port,
       user,
       password,
+      ssl,
       multipleStatements: true
     });
   } catch (error) {
@@ -56,6 +57,7 @@ async function initializeDatabase() {
     user,
     password,
     database,
+    ssl,
     multipleStatements: true
   });
 
