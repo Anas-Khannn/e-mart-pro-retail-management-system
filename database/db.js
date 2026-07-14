@@ -6,9 +6,12 @@ const getDatabaseConfig = require('./config');
 const poolConfig = {
   ...getDatabaseConfig(),
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20,
   queueLimit: 0,
-  multipleStatements: true // Essential for running migrations and triggers
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 10000,
+  acquireTimeout: 10000
 };
 
 // Create the pool

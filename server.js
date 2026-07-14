@@ -1,5 +1,6 @@
 // E-Mart Management System - Node.js Express Server
 const express = require('express');
+const compression = require('compression');
 const session = require('express-session');
 const mysql = require('./database/db');
 const dbInit = require('./database/init');
@@ -20,6 +21,36 @@ function initializeAppDatabase() {
   }
   return dbReadyPromise;
 }
+
+// Gzip compression for all responses
+app.use(compression());
+
+// Simple in-memory rate limiter
+const rateLimitStore = new Map();
+function rateLimit(maxRequests, windowMs) {
+  return (req, res, next) => {
+    const key = req.ip;
+    const now = Date.now();
+    const record = rateLimitStore.get(key);
+    if (!record || now - record.start > windowMs) {
+      rateLimitStore.set(key, { start: now, count: 1 });
+      return next();
+    }
+    record.count++;
+    if (record.count > maxRequests) {
+      return res.status(429).json({ message: 'Too many requests. Please try again later.' });
+    }
+    next();
+  };
+}
+
+// Cleanup expired rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of rateLimitStore) {
+    if (now - record.start > 60000) rateLimitStore.delete(key);
+  }
+}, 300000);
 
 // Body Parsers
 app.use(express.json());
@@ -89,11 +120,11 @@ const upload = multer({
   }
 });
 
-// Serve static assets based on requested folders
-app.use('/css', express.static(path.join(__dirname, 'css')));
-app.use('/js', express.static(path.join(__dirname, 'js')));
-app.use('/images', express.static(path.join(__dirname, 'images')));
-app.use('/uploads', express.static(uploadsDir));
+// Serve static assets with cache headers
+app.use('/css', express.static(path.join(__dirname, 'css'), { maxAge: '7d', immutable: true }));
+app.use('/js', express.static(path.join(__dirname, 'js'), { maxAge: '7d', immutable: true }));
+app.use('/images', express.static(path.join(__dirname, 'images'), { maxAge: '1d' }));
+app.use('/uploads', express.static(uploadsDir, { maxAge: '1d' }));
 
 // Root route serves landing page
 app.get('/', (req, res) => {
@@ -154,7 +185,7 @@ app.get('/pages/users.html', requireAdminPage, (req, res) => res.sendFile(path.j
    ========================================================================== */
 
 // Signup API
-app.post('/api/auth/signup', upload.single('profile_image'), async (req, res) => {
+app.post('/api/auth/signup', rateLimit(10, 60000), upload.single('profile_image'), async (req, res) => {
   const { full_name, email, phone, password, role } = req.body;
 
   if (!full_name || !email || !password || !phone || !role) {
@@ -197,7 +228,7 @@ app.post('/api/auth/signup', upload.single('profile_image'), async (req, res) =>
 });
 
 // Login API
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', rateLimit(10, 60000), async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -362,43 +393,18 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
   try {
-    // 1. Total Revenue
-    const [revenue] = await mysql.query("SELECT SUM(total_amount) AS total FROM sales WHERE status = 'completed'");
-    const totalRevenue = revenue[0].total || 0;
+    const [stats] = await mysql.query(`
+      SELECT
+        (SELECT IFNULL(SUM(total_amount), 0) FROM sales WHERE status = 'completed') AS totalRevenue,
+        (SELECT COUNT(*) FROM sales WHERE status = 'completed') AS totalSales,
+        (SELECT COUNT(*) FROM products) AS totalProducts,
+        (SELECT COUNT(*) FROM customers WHERE name != 'Walking Customer') AS totalCustomers,
+        (SELECT COUNT(*) FROM sales) AS totalOrders,
+        (SELECT COUNT(*) FROM products WHERE quantity > 0 AND quantity <= min_stock) AS lowStockCount,
+        (SELECT COUNT(*) FROM products WHERE quantity = 0) AS outOfStockCount
+    `);
 
-    // 2. Total Sales Count
-    const [salesCount] = await mysql.query("SELECT COUNT(*) AS total FROM sales WHERE status = 'completed'");
-    const totalSales = salesCount[0].total || 0;
-
-    // 3. Total Products Count
-    const [productsCount] = await mysql.query("SELECT COUNT(*) AS total FROM products");
-    const totalProducts = productsCount[0].total || 0;
-
-    // 4. Total Customers Count
-    const [customersCount] = await mysql.query("SELECT COUNT(*) AS total FROM customers WHERE name != 'Walking Customer'");
-    const totalCustomers = customersCount[0].total || 0;
-
-    // 5. Total Orders Count
-    const [ordersCount] = await mysql.query("SELECT COUNT(*) AS total FROM sales");
-    const totalOrders = ordersCount[0].total || 0;
-
-    // 6. Low Stock Products Count (quantity > 0 AND quantity <= min_stock)
-    const [lowStock] = await mysql.query("SELECT COUNT(*) AS total FROM products WHERE quantity > 0 AND quantity <= min_stock");
-    const lowStockCount = lowStock[0].total || 0;
-
-    // 7. Out of Stock Products Count (quantity = 0)
-    const [outOfStock] = await mysql.query("SELECT COUNT(*) AS total FROM products WHERE quantity = 0");
-    const outOfStockCount = outOfStock[0].total || 0;
-
-    res.json({
-      totalRevenue,
-      totalSales,
-      totalProducts,
-      totalCustomers,
-      totalOrders,
-      lowStockCount,
-      outOfStockCount
-    });
+    res.json(stats[0]);
   } catch (error) {
     console.error('Stats query error:', error);
     res.status(500).json({ message: 'Error retrieving stats.' });
@@ -407,45 +413,40 @@ app.get('/api/dashboard/stats', requireAuth, async (req, res) => {
 
 app.get('/api/dashboard/details', requireAuth, async (req, res) => {
   try {
-    // Recent Sales
-    const [recentSales] = await mysql.query(`
-      SELECT s.id, s.invoice_number, s.total_amount, s.payment_method, s.sale_date, c.name AS customer_name
-      FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id
-      ORDER BY s.sale_date DESC
-      LIMIT 5
-    `);
-
-    // Top Selling Products
-    const [topProducts] = await mysql.query(`
-      SELECT p.name, p.sku, SUM(si.quantity) AS sold_qty, SUM(si.subtotal) AS revenue
-      FROM sale_items si
-      JOIN products p ON si.product_id = p.id
-      GROUP BY p.id
-      ORDER BY sold_qty DESC
-      LIMIT 5
-    `);
-
-    // Category Inventory Share
-    const [categoriesInventory] = await mysql.query(`
-      SELECT c.name, COUNT(p.id) AS product_count, SUM(p.quantity) AS stock_total
-      FROM categories c
-      LEFT JOIN products p ON p.category_id = c.id
-      GROUP BY c.id
-    `);
-
-    // Fetch products that are Low Stock or Out of Stock with average daily sales in the last 30 days
-    const [stockAlerts] = await mysql.query(`
-      SELECT 
-        p.id, p.name, p.sku, p.quantity, p.min_stock,
-        IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales
-      FROM products p
-      LEFT JOIN sale_items si ON p.id = si.product_id
-      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.status = 'completed'
-      WHERE p.quantity <= p.min_stock
-      GROUP BY p.id
-      ORDER BY p.quantity ASC
-    `);
+    const [[recentSales], [topProducts], [categoriesInventory], [stockAlerts]] = await Promise.all([
+      mysql.query(`
+        SELECT s.id, s.invoice_number, s.total_amount, s.payment_method, s.sale_date, c.name AS customer_name
+        FROM sales s
+        LEFT JOIN customers c ON s.customer_id = c.id
+        ORDER BY s.sale_date DESC
+        LIMIT 5
+      `),
+      mysql.query(`
+        SELECT p.name, p.sku, SUM(si.quantity) AS sold_qty, SUM(si.subtotal) AS revenue
+        FROM sale_items si
+        JOIN products p ON si.product_id = p.id
+        GROUP BY p.id
+        ORDER BY sold_qty DESC
+        LIMIT 5
+      `),
+      mysql.query(`
+        SELECT c.name, COUNT(p.id) AS product_count, SUM(p.quantity) AS stock_total
+        FROM categories c
+        LEFT JOIN products p ON p.category_id = c.id
+        GROUP BY c.id
+      `),
+      mysql.query(`
+        SELECT 
+          p.id, p.name, p.sku, p.quantity, p.min_stock,
+          IFNULL(SUM(si.quantity), 0) / 30.0 AS avg_daily_sales
+        FROM products p
+        LEFT JOIN sale_items si ON p.id = si.product_id
+        LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND s.status = 'completed'
+        WHERE p.quantity <= p.min_stock
+        GROUP BY p.id
+        ORDER BY p.quantity ASC
+      `)
+    ]);
 
     const alerts = stockAlerts.map(alert => {
       const qty = alert.quantity;
@@ -721,44 +722,44 @@ app.post('/api/pos/checkout', requireAuth, async (req, res) => {
     return res.status(400).json({ message: 'Cart items cannot be empty.' });
   }
 
-  // Calculate costs on server to ensure validity
   let subtotal = 0;
   try {
-    // Start Connection Transaction
     const conn = await mysql.getConnection();
     await conn.beginTransaction();
 
     try {
-      // 1. Tally subtotal & check stock level of products
+      const productIds = items.map(item => item.id);
+      const [prodRecords] = await conn.query(
+        `SELECT id, selling_price, quantity, name FROM products WHERE id IN (?)`,
+        [productIds]
+      );
+
+      const productMap = {};
+      for (const prod of prodRecords) {
+        productMap[prod.id] = prod;
+      }
+
+      const itemDetails = [];
       for (const item of items) {
-        const [prodRecord] = await conn.query('SELECT selling_price, quantity, name FROM products WHERE id = ?', [item.id]);
-        if (prodRecord.length === 0) {
-          throw new Error(`Product ID ${item.id} not found.`);
-        }
-        
-        const prod = prodRecord[0];
-        if (prod.quantity <= 0) {
-          throw new Error(`Product ${prod.name} is out of stock.`);
-        }
+        const prod = productMap[item.id];
+        if (!prod) throw new Error(`Product ID ${item.id} not found.`);
+        if (prod.quantity <= 0) throw new Error(`Product ${prod.name} is out of stock.`);
         if (prod.quantity < item.quantity) {
           throw new Error(`Insufficient stock for product: ${prod.name}. Available: ${prod.quantity}. Required: ${item.quantity}.`);
         }
-
         subtotal += parseFloat(prod.selling_price) * item.quantity;
+        itemDetails.push({ ...item, price: prod.selling_price });
       }
 
-      // Calculations
       const taxRate = parseFloat(tax) || 0;
       const discountVal = parseFloat(discount) || 0;
       const taxAmount = subtotal * (taxRate / 100);
       const totalAmount = subtotal + taxAmount - discountVal;
 
-      // 2. Create Invoice ID
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const randHex = Math.floor(1000 + Math.random() * 9000).toString();
       const invoiceNumber = `INV-${dateStr}-${randHex}`;
 
-      // 3. Insert Sale Record
       const [saleRes] = await conn.query(`
         INSERT INTO sales (invoice_number, customer_id, user_id, subtotal, discount, tax, total_amount, payment_method, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')
@@ -766,32 +767,26 @@ app.post('/api/pos/checkout', requireAuth, async (req, res) => {
 
       const saleId = saleRes.insertId;
 
-      // 4. Insert Sale Items (Trigger automatically decreases inventory)
-      for (const item of items) {
-        const [prodRecord] = await conn.query('SELECT selling_price FROM products WHERE id = ?', [item.id]);
-        const itemPrice = prodRecord[0].selling_price;
-        const itemSubtotal = parseFloat(itemPrice) * item.quantity;
+      const saleItemValues = itemDetails.map(item => {
+        const itemSubtotal = parseFloat(item.price) * item.quantity;
+        return [saleId, item.id, item.quantity, item.price, itemSubtotal];
+      });
 
-        await conn.query(`
-          INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal)
-          VALUES (?, ?, ?, ?, ?)
-        `, [saleId, item.id, item.quantity, itemPrice, itemSubtotal]);
-      }
+      await conn.query(
+        `INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal) VALUES ?`,
+        [saleItemValues]
+      );
 
-      // 5. Update Customer loyalty points
-      if (customer_id && customer_id > 1) { // 1 is usually walk-in
-        const loyaltyPointsAdded = Math.floor(totalAmount * 0.1); // 10% of total as points
+      if (customer_id && customer_id > 1) {
+        const loyaltyPointsAdded = Math.floor(totalAmount * 0.1);
         await conn.query('UPDATE customers SET loyalty_points = loyalty_points + ? WHERE id = ?', [loyaltyPointsAdded, customer_id]);
       }
 
-      // 6. Insert invoice record
       await conn.query('INSERT INTO invoices (sale_id, invoice_number) VALUES (?, ?)', [saleId, invoiceNumber]);
 
-      // 7. Log Activity
       await conn.query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)', 
         [req.session.user.id, 'POS checkout', `Created Invoice: ${invoiceNumber}. Total: $${totalAmount.toFixed(2)}`]);
 
-      // Commit transaction
       await conn.commit();
       conn.release();
 
@@ -988,7 +983,7 @@ app.delete('/api/customers/:id', requireAuth, async (req, res) => {
    ========================================================================== */
 
 app.get('/api/reports/analytics', requireAuth, async (req, res) => {
-  const { type } = req.query; // daily, weekly, monthly, yearly
+  const { type } = req.query;
 
   try {
     let salesQuery = '';
@@ -1018,7 +1013,6 @@ app.get('/api/reports/analytics', requireAuth, async (req, res) => {
         ORDER BY label ASC
       `;
     } else {
-      // Default: Monthly
       salesQuery = `
         SELECT DATE_FORMAT(sale_date, '%Y-%m') AS label, SUM(total_amount) AS value, COUNT(id) AS sales_count
         FROM sales
@@ -1028,32 +1022,28 @@ app.get('/api/reports/analytics', requireAuth, async (req, res) => {
       `;
     }
 
-    const [salesAnalytics] = await mysql.query(salesQuery);
-
-    // Inventory report lists
-    const [lowStockProducts] = await mysql.query('SELECT name, sku, quantity, selling_price FROM products WHERE quantity < 15 ORDER BY quantity ASC');
-    const [outOfStockProducts] = await mysql.query('SELECT name, sku, quantity, selling_price FROM products WHERE quantity = 0');
-
-    // Top customer spends
-    const [topCustomers] = await mysql.query(`
-      SELECT c.name, c.phone, SUM(s.total_amount) AS total_spent, COUNT(s.id) AS order_count
-      FROM sales s
-      JOIN customers c ON s.customer_id = c.id
-      WHERE s.status = 'completed' AND c.name != 'Walking Customer'
-      GROUP BY c.id
-      ORDER BY total_spent DESC
-      LIMIT 10
-    `);
-
-    // Customer growth counts
-    const [customerGrowth] = await mysql.query(`
-      SELECT DATE_FORMAT(created_at, '%Y-%m') AS label, COUNT(id) AS value
-      FROM customers
-      WHERE name != 'Walking Customer'
-      GROUP BY label
-      ORDER BY label ASC
-      LIMIT 12
-    `);
+    const [[salesAnalytics], [lowStockProducts], [outOfStockProducts], [topCustomers], [customerGrowth]] = await Promise.all([
+      mysql.query(salesQuery),
+      mysql.query('SELECT name, sku, quantity, selling_price FROM products WHERE quantity < 15 ORDER BY quantity ASC'),
+      mysql.query('SELECT name, sku, quantity, selling_price FROM products WHERE quantity = 0'),
+      mysql.query(`
+        SELECT c.name, c.phone, SUM(s.total_amount) AS total_spent, COUNT(s.id) AS order_count
+        FROM sales s
+        JOIN customers c ON s.customer_id = c.id
+        WHERE s.status = 'completed' AND c.name != 'Walking Customer'
+        GROUP BY c.id
+        ORDER BY total_spent DESC
+        LIMIT 10
+      `),
+      mysql.query(`
+        SELECT DATE_FORMAT(created_at, '%Y-%m') AS label, COUNT(id) AS value
+        FROM customers
+        WHERE name != 'Walking Customer'
+        GROUP BY label
+        ORDER BY label ASC
+        LIMIT 12
+      `)
+    ]);
 
     res.json({
       sales: salesAnalytics,

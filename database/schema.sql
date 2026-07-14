@@ -145,6 +145,15 @@ UPDATE products
 SET quantity = quantity - NEW.quantity
 WHERE id = NEW.product_id;
 
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_sales_customer_id ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_sale_date ON sales(sale_date);
+CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_quantity ON products(quantity);
+
 -- Seeding default Admin and Shopkeeper
 -- Default password for both is 'admin123'
 -- Hashed using bcryptjs ($2b$10$cCCLL6/4ZApHHyBQIGFkYuPSoT.jymTNNQ2AVl34/i0K4pOT57r2m)
