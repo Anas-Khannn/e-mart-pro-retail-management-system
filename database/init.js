@@ -62,13 +62,6 @@ async function initializeDatabase() {
   });
 
   try {
-    console.log(`[DB Init] Applying idempotent schema migration from schema.sql...`);
-    const schemaPath = path.join(__dirname, 'schema.sql');
-    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-
-    await connection.query(schemaSql);
-    console.log(`[DB Init] Database schema migration completed.`);
-
     const [columns] = await connection.query(`
       SELECT COLUMN_NAME
       FROM information_schema.columns
@@ -90,6 +83,13 @@ async function initializeDatabase() {
       await connection.query(`ALTER TABLE products ADD COLUMN min_stock INT NOT NULL DEFAULT 5 AFTER quantity`);
       console.log(`[DB Init] Added products.min_stock column.`);
     }
+
+    console.log(`[DB Init] Applying idempotent schema migration from schema.sql...`);
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+
+    await connection.query(schemaSql);
+    console.log(`[DB Init] Database schema migration completed.`);
   } catch (error) {
     fail('[DB Init] Error initializing database schema', error);
   } finally {
