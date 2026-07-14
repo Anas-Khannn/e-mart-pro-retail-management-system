@@ -188,6 +188,9 @@ app.post('/api/auth/signup', upload.single('profile_image'), async (req, res) =>
 
     res.status(201).json({ success: true, message: 'Account registered successfully.' });
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Email address is already in use.' });
+    }
     console.error('Signup API error:', error);
     res.status(500).json({ message: 'Internal server error.' });
   }
